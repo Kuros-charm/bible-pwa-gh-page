@@ -208,11 +208,17 @@
   <header class="bg-secondary border-b border-custom sticky top-0 z-50">
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
       <h1 class="text-xl md:text-2xl font-bold text-accent">📖 聖經閱讀器</h1>
-      <button @click="toggleDarkMode()" class="p-2 rounded-full hover:bg-primary transition-colors"
-        :title="isDark ? '切換淺色模式' : '切換深色模式'">
-        <span x-show="!isDark" class="text-xl">🌙</span>
-        <span x-show="isDark" class="text-xl">☀️</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button @click="settingsModal.show = true" class="p-2 rounded-full hover:bg-primary transition-colors"
+          title="設定">
+          <span class="text-xl">⚙️</span>
+        </button>
+        <button @click="toggleDarkMode()" class="p-2 rounded-full hover:bg-primary transition-colors"
+          :title="isDark ? '切換淺色模式' : '切換深色模式'">
+          <span x-show="!isDark" class="text-xl">🌙</span>
+          <span x-show="isDark" class="text-xl">☀️</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -338,7 +344,7 @@
           <div x-show="currentVerses.length === 0 && !isLoading"
             class="flex flex-col items-center justify-center py-16 text-secondary">
             <span class="text-4xl mb-4">📖</span>
-            <p>選擇書卷和章節開始閱讀</p>
+            <p>選擇書卷和章節���始閱讀</p>
           </div>
 
           <!-- Loading State -->
@@ -425,6 +431,100 @@
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div x-cloak x-show="settingsModal.show" x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="settingsModal.show = false">
+    <div class="modal-content max-w-md" x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
+      <h3 class="text-lg font-semibold text-accent mb-4">⚙️ 設定</h3>
+
+      <!-- File System Access Status -->
+      <div class="mb-4 p-3 rounded-lg bg-primary border border-custom">
+        <div class="flex items-center gap-2 mb-1">
+          <span x-text="hasFileSystemAccess ? '✅' : '⚠️'"></span>
+          <span class="font-medium text-primary" x-text="hasFileSystemAccess ? '支援檔案系統 API' : '不支援檔案系統 API'"></span>
+        </div>
+        <p class="text-sm text-secondary" x-text="hasFileSystemAccess ? '可自動同步至本機檔案' : '將使用下載/上傳方式備份'"></p>
+      </div>
+
+      <!-- Data Sync Section -->
+      <div class="space-y-3 mb-6">
+        <h4 class="font-medium text-primary">📂 資料備份</h4>
+
+        <!-- File Handle Status -->
+        <div x-show="fileHandle" class="p-3 rounded-lg bg-primary border border-custom">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-secondary">已連結檔案：</p>
+              <p class="font-medium text-primary" x-text="fileHandle?.name || '未知'"></p>
+              <p class="text-xs text-secondary mt-1">💡 重新開啟 app 後需重新授權</p>
+            </div>
+            <button @click="unlinkFile()" class="text-sm text-red-500 hover:text-red-600">解除連結</button>
+          </div>
+        </div>
+
+        <!-- Export Button -->
+        <button @click="exportData()" :disabled="settingsModal.isBusy"
+          class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+          <span>💾</span>
+          <span x-text="hasFileSystemAccess ? (fileHandle ? '儲存至檔案' : '選擇檔案並儲存') : '下載備份檔案'"></span>
+        </button>
+
+        <!-- Import Button -->
+        <button @click="importData()" :disabled="settingsModal.isBusy"
+          class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+          <span>📂</span>
+          <span x-text="hasFileSystemAccess ? '從檔案載入' : '上傳備份檔案'"></span>
+        </button>
+
+        <!-- Auto-sync toggle (only for File System Access) -->
+        <div x-show="hasFileSystemAccess && fileHandle" class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom">
+          <div>
+            <p class="font-medium text-primary">自動同步</p>
+            <p class="text-sm text-secondary">變更時自動儲存至檔案</p>
+          </div>
+          <button @click="autoSync = !autoSync; saveAutoSyncPreference()"
+            :class="autoSync ? 'bg-green-500' : 'bg-gray-400'"
+            class="relative w-12 h-6 rounded-full transition-colors">
+            <span :class="autoSync ? 'translate-x-6' : 'translate-x-1'"
+              class="absolute top-1 left-0 w-4 h-4 bg-white rounded-full transition-transform shadow"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Status Message -->
+      <div x-show="settingsModal.message" class="mb-4 p-3 rounded-lg"
+        :class="settingsModal.isError ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'">
+        <p class="text-sm" x-text="settingsModal.message"></p>
+      </div>
+
+      <!-- Cache Section -->
+      <div class="space-y-3 mb-6">
+        <h4 class="font-medium text-primary">🗄️ 快取管理</h4>
+        <div class="p-3 rounded-lg bg-primary border border-custom">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-secondary">經文快取</p>
+              <p class="font-medium text-primary" x-text="hasBibleCache ? '已快取 (~5MB)' : '未快取'"></p>
+            </div>
+            <button x-show="hasBibleCache" @click="clearBibleCache()" class="text-sm text-red-500 hover:text-red-600">清除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Close Button -->
+      <div class="flex justify-end">
+        <button @click="settingsModal.show = false"
+          class="px-4 py-2 rounded-lg text-white transition-colors"
+          style="background-color: var(--accent);">
+          關閉
+        </button>
+      </div>
+    </div>
+  </div>
+
 
     <div id="pwa-toast" role="alert" aria-labelledby="toast-message"
       class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-secondary border border-custom rounded-xl p-4 shadow-lg z-[300] hidden">
@@ -489,8 +589,20 @@
           verse: null,
           note: ''
         },
+        settingsModal: {
+          show: false,
+          isBusy: false,
+          message: '',
+          isError: false
+        },
+        hasFileSystemAccess: false,
+        fileHandle: null,
+        autoSync: false,
+        hasBibleCache: false,
 
         async init() {
+          // Check File System Access API support
+          this.hasFileSystemAccess = 'showSaveFilePicker' in window;
           // Check dark mode preference
           if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             this.isDark = true;
@@ -510,11 +622,14 @@
         // IndexedDB helpers using idb-keyval
         async loadFromStorage() {
           try {
-            const [savedTitles, savedNotes, savedBook, savedChapter] = await Promise.all([
+            const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, cachedBible, savedFileHandle] = await Promise.all([
               idbKeyval.get('bible_customTitles'),
               idbKeyval.get('bible_notes'),
               idbKeyval.get('bible_selectedBook'),
-              idbKeyval.get('bible_selectedChapter')
+              idbKeyval.get('bible_selectedChapter'),
+              idbKeyval.get('bible_autoSync'),
+              idbKeyval.get('bible_verses_cache'),
+              idbKeyval.get('bible_fileHandle')
             ]);
 
             if (savedTitles) {
@@ -529,15 +644,58 @@
             if (savedChapter) {
               this._pendingChapter = savedChapter;
             }
+            if (savedAutoSync !== undefined) {
+              this.autoSync = savedAutoSync;
+            }
+            this.hasBibleCache = !!cachedBible;
+
+            // Restore file handle if available (permissions will need to be re-requested)
+            if (savedFileHandle && this.hasFileSystemAccess) {
+              this.fileHandle = savedFileHandle;
+              // Note: Permission will be checked/requested when user tries to use it
+            }
           } catch (e) {
             console.warn('Failed to load from IndexedDB:', e);
           }
+        },
+
+        // Save file handle to IndexedDB
+        async saveFileHandle() {
+          try {
+            if (this.fileHandle) {
+              await idbKeyval.set('bible_fileHandle', this.fileHandle);
+            } else {
+              await idbKeyval.del('bible_fileHandle');
+            }
+          } catch (e) {
+            console.warn('Failed to save file handle:', e);
+          }
+        },
+
+        // Verify and request permission for file handle
+        async verifyPermission(readWrite = true) {
+          if (!this.fileHandle) return false;
+
+          const options = readWrite ? { mode: 'readwrite' } : {};
+
+          // Check if permission was already granted
+          if ((await this.fileHandle.queryPermission(options)) === 'granted') {
+            return true;
+          }
+
+          // Request permission if not granted
+          if ((await this.fileHandle.requestPermission(options)) === 'granted') {
+            return true;
+          }
+
+          return false;
         },
 
         async saveCustomTitles() {
           try {
             // Clone to plain object to avoid DataCloneError with Alpine proxies
             await idbKeyval.set('bible_customTitles', JSON.parse(JSON.stringify(this.customTitles)));
+            await this.triggerAutoSync();
           } catch (e) {
             console.warn('Failed to save custom titles:', e);
           }
@@ -547,6 +705,7 @@
           try {
             // Clone to plain object to avoid DataCloneError with Alpine proxies
             await idbKeyval.set('bible_notes', JSON.parse(JSON.stringify(this.notes)));
+            await this.triggerAutoSync();
           } catch (e) {
             console.warn('Failed to save notes:', e);
           }
@@ -599,6 +758,7 @@
               this.loadingSubMessage = '下次載入將更快';
               try {
                 await idbKeyval.set('bible_verses_cache', profiles);
+                this.hasBibleCache = true;
                 console.log('Bible data cached successfully');
               } catch (cacheError) {
                 console.warn('Failed to cache Bible data:', cacheError);
@@ -911,6 +1071,223 @@
           }
           this.saveNotes();
           this.closeNoteModal();
+        },
+
+        // Settings & File System Access API methods
+        async saveAutoSyncPreference() {
+          try {
+            await idbKeyval.set('bible_autoSync', this.autoSync);
+          } catch (e) {
+            console.warn('Failed to save auto-sync preference:', e);
+          }
+        },
+
+        getExportData() {
+          return {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            customTitles: JSON.parse(JSON.stringify(this.customTitles)),
+            notes: JSON.parse(JSON.stringify(this.notes)),
+            selectedBook: this.selectedBook,
+            selectedChapter: this.selectedChapter
+          };
+        },
+
+        async exportData() {
+          this.settingsModal.isBusy = true;
+          this.settingsModal.message = '';
+
+          try {
+            const data = this.getExportData();
+            const jsonString = JSON.stringify(data, null, 2);
+
+            if (this.hasFileSystemAccess) {
+              // Use File System Access API
+              if (!this.fileHandle) {
+                // Prompt user to select/create a file
+                this.fileHandle = await window.showSaveFilePicker({
+                  suggestedName: 'bible-backup.json',
+                  types: [{
+                    description: 'JSON Files',
+                    accept: { 'application/json': ['.json'] }
+                  }]
+                });
+                // Save the new file handle to IndexedDB
+                await this.saveFileHandle();
+              } else {
+                // Verify permission for existing file handle
+                const hasPermission = await this.verifyPermission(true);
+                if (!hasPermission) {
+                  this.settingsModal.message = '權限被拒絕，請重新選擇檔案';
+                  this.settingsModal.isError = true;
+                  this.fileHandle = null;
+                  await this.saveFileHandle();
+                  return;
+                }
+              }
+
+              // Write to the file
+              const writable = await this.fileHandle.createWritable();
+              await writable.write(jsonString);
+              await writable.close();
+
+              this.settingsModal.message = `已儲存至 ${this.fileHandle.name}`;
+              this.settingsModal.isError = false;
+            } else {
+              // Fallback to download
+              const blob = new Blob([jsonString], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `bible-backup-${new Date().toISOString().slice(0, 10)}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+
+              this.settingsModal.message = '備份檔案已下載';
+              this.settingsModal.isError = false;
+            }
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              // User cancelled the file picker
+              this.settingsModal.message = '';
+            } else {
+              console.error('Export failed:', e);
+              this.settingsModal.message = '匯出失敗：' + e.message;
+              this.settingsModal.isError = true;
+            }
+          } finally {
+            this.settingsModal.isBusy = false;
+          }
+        },
+
+        async importData() {
+          this.settingsModal.isBusy = true;
+          this.settingsModal.message = '';
+
+          try {
+            let fileContent;
+
+            if (this.hasFileSystemAccess) {
+              // Use File System Access API
+              const [handle] = await window.showOpenFilePicker({
+                types: [{
+                  description: 'JSON Files',
+                  accept: { 'application/json': ['.json'] }
+                }],
+                multiple: false
+              });
+
+              const file = await handle.getFile();
+              fileContent = await file.text();
+
+              // Store the handle for future use and persist to IndexedDB
+              this.fileHandle = handle;
+              await this.saveFileHandle();
+            } else {
+              // Fallback to file input
+              fileContent = await new Promise((resolve, reject) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json,application/json';
+                input.onchange = async (e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    resolve(await file.text());
+                  } else {
+                    reject(new Error('No file selected'));
+                  }
+                };
+                input.click();
+              });
+            }
+
+            const data = JSON.parse(fileContent);
+
+            // Validate data structure
+            if (!data.version || !data.exportedAt) {
+              throw new Error('無效的備份檔案格式');
+            }
+
+            // Import the data
+            if (data.customTitles) {
+              this.customTitles = data.customTitles;
+              await this.saveCustomTitles();
+            }
+            if (data.notes) {
+              this.notes = data.notes;
+              await this.saveNotes();
+            }
+            if (data.selectedBook && this.books.includes(data.selectedBook)) {
+              this.selectedBook = data.selectedBook;
+              this.updateChapters();
+            }
+            if (data.selectedChapter && this.chapters.includes(data.selectedChapter)) {
+              this.selectedChapter = data.selectedChapter;
+            }
+            this.loadVerses();
+            await this.saveReadingPosition();
+
+            const noteCount = Object.keys(this.notes).length;
+            const titleCount = Object.keys(this.customTitles).length;
+            this.settingsModal.message = `已匯入 ${titleCount} 個標題和 ${noteCount} 個筆記`;
+            this.settingsModal.isError = false;
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              // User cancelled
+              this.settingsModal.message = '';
+            } else {
+              console.error('Import failed:', e);
+              this.settingsModal.message = '匯入失敗：' + e.message;
+              this.settingsModal.isError = true;
+            }
+          } finally {
+            this.settingsModal.isBusy = false;
+          }
+        },
+
+        async unlinkFile() {
+          this.fileHandle = null;
+          await this.saveFileHandle();
+          this.settingsModal.message = '已解除檔案連結';
+          this.settingsModal.isError = false;
+        },
+
+        async clearBibleCache() {
+          try {
+            await idbKeyval.del('bible_verses_cache');
+            this.hasBibleCache = false;
+            this.settingsModal.message = '快取已清除，下次載入將重新下載';
+            this.settingsModal.isError = false;
+          } catch (e) {
+            console.error('Failed to clear cache:', e);
+            this.settingsModal.message = '清除快取失敗：' + e.message;
+            this.settingsModal.isError = true;
+          }
+        },
+
+        // Auto-sync on data changes (call after saving notes/titles)
+        async triggerAutoSync() {
+          if (this.autoSync && this.fileHandle && this.hasFileSystemAccess) {
+            try {
+              // Verify permission before writing
+              const hasPermission = await this.verifyPermission(true);
+              if (!hasPermission) {
+                console.warn('Auto-sync skipped: permission denied');
+                return;
+              }
+
+              const data = this.getExportData();
+              const jsonString = JSON.stringify(data, null, 2);
+              const writable = await this.fileHandle.createWritable();
+              await writable.write(jsonString);
+              await writable.close();
+              console.log('Auto-synced to file');
+            } catch (e) {
+              console.warn('Auto-sync failed:', e);
+            }
+          }
         }
       };
     }
