@@ -68,7 +68,7 @@
     .verse-highlight { animation: verseHighlight 2s ease-out forwards; border-radius: 0.5rem; background-color: var(--bg-secondary) !important; opacity: 1 !important; }
 
     /* === Components using CSS vars (can't fully convert to Tailwind) === */
-    .section-title { color: var(--accent); font-weight: 700; font-size: 1.1em; padding: 0.25rem 0; margin-bottom: 0.5rem; margin-top: 0.7rem; }
+    .section-title { color: var(--accent); font-weight: 700; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal-content { background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 400px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
     .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; }
@@ -93,7 +93,7 @@
 
 <body class="min-h-screen" x-data="bibleReader()">
 
-  <div id="app">
+  <div id="app" :style="`zoom: ${zoom / 100};`">
       <!-- Header -->
   <header class="bg-secondary border-b border-custom sticky top-0 z-50">
     <div class="max-w-4xl mx-auto px-2 sm:px-4 py-3 flex items-center justify-between">
@@ -170,7 +170,7 @@
           <template x-for="(verse, index) in currentVerses" :key="'verse-' + index">
             <div>
               <!-- Section Title (displayed before the verse) -->
-              <div x-show="customTitles[verse.ref]" class="section-title" x-text="customTitles[verse.ref]"></div>
+              <div x-show="customTitles[verse.ref]" class="section-title" :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily}; margin-top: ${verseSpacing * 0.75}px; margin-bottom: ${verseSpacing * 0.5}px;`" x-text="customTitles[verse.ref]"></div>
               <!-- Verse Container -->
               <div class="verse-item verse-container"
                 :data-verse-num="verse.verseNum"
@@ -460,6 +460,11 @@
           class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
           <span class="block text-base mb-0.5">字</span>字型
         </button>
+        <button @click="switchOverlayTab(4)"
+          :class="readingOverlay.activeTab === 4 ? 'bg-white/10 text-white' : 'text-white/50'"
+          class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
+          <span class="block text-base mb-0.5">🔍</span>縮放
+        </button>
       </div>
 
       <!-- Control Area -->
@@ -525,6 +530,21 @@
           </button>
         </div>
 
+        <!-- Zoom Control -->
+        <div x-show="readingOverlay.activeTab === 4" class="flex items-center gap-4">
+          <button @click="adjustZoom(-5)"
+            class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
+            <span class="text-lg">−</span>
+          </button>
+          <div class="flex-1 text-center">
+            <div class="text-2xl font-bold" x-text="zoom + '%'"></div>
+          </div>
+          <button @click="adjustZoom(5)"
+            class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
+            <span class="text-lg">+</span>
+          </button>
+        </div>
+
         <!-- Draggable Progress bar (hidden for font family tab) -->
         <div x-show="readingOverlay.activeTab !== 3"
           class="mt-4 h-6 flex items-center cursor-pointer touch-none"
@@ -537,7 +557,9 @@
                 ? `width: ${((fontSize - 0.75) / 1.5) * 100}%`
                 : readingOverlay.activeTab === 1
                   ? `width: ${((lineHeight - 1.0) / 2.0) * 100}%`
-                  : `width: ${(verseSpacing / 64) * 100}%`">
+                  : readingOverlay.activeTab === 2
+                    ? `width: ${(verseSpacing / 64) * 100}%`
+                    : `width: ${((zoom - 50) / 100) * 100}%`">
             </div>
             <!-- Slider handle -->
             <div class="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-md transition-all"
@@ -546,7 +568,9 @@
                 ? `left: calc(${((fontSize - 0.75) / 1.5) * 100}% - 8px)`
                 : readingOverlay.activeTab === 1
                   ? `left: calc(${((lineHeight - 1.0) / 2.0) * 100}% - 8px)`
-                  : `left: calc(${(verseSpacing / 64) * 100}% - 8px)`">
+                  : readingOverlay.activeTab === 2
+                    ? `left: calc(${(verseSpacing / 64) * 100}% - 8px)`
+                    : `left: calc(${((zoom - 50) / 100) * 100}% - 8px)`">
             </div>
           </div>
         </div>
@@ -1080,6 +1104,7 @@
         lineHeight: 1.8,   // multiplier
         verseSpacing: 16,  // in pixels (gap between verses)
         fontFamily: 0,     // index into fontFamilies array
+        zoom: 100,         // global zoom percentage (50-150%)
         fontFamilies: [
           { name: '系統字型', value: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
           { name: '思源宋體', value: '"Noto Serif TC", serif' },
@@ -1131,7 +1156,7 @@
         // IndexedDB helpers using idb-keyval
         async loadFromStorage() {
           try {
-            const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, savedFileHandle, savedVersionId, savedCachedVersions, savedFontSize, savedLineHeight, savedVerseSpacing, savedFontFamily, savedHighlightDefs, savedVerseHighlights] = await Promise.all([
+            const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, savedFileHandle, savedVersionId, savedCachedVersions, savedFontSize, savedLineHeight, savedVerseSpacing, savedFontFamily, savedHighlightDefs, savedVerseHighlights, savedZoom] = await Promise.all([
               idbKeyval.get('bible_customTitles'),
               idbKeyval.get('bible_notes'),
               idbKeyval.get('bible_selectedBook'),
@@ -1145,7 +1170,8 @@
               idbKeyval.get('bible_verseSpacing'),
               idbKeyval.get('bible_fontFamily'),
               idbKeyval.get('bible_highlightDefs'),
-              idbKeyval.get('bible_verseHighlights')
+              idbKeyval.get('bible_verseHighlights'),
+              idbKeyval.get('bible_zoom')
             ]);
 
             if (savedTitles) {
@@ -1196,6 +1222,9 @@
             }
             if (savedFontFamily !== undefined && savedFontFamily >= 0 && savedFontFamily < this.fontFamilies.length) {
               this.fontFamily = savedFontFamily;
+            }
+            if (savedZoom && savedZoom >= 50 && savedZoom <= 150) {
+              this.zoom = savedZoom;
             }
             // Restore highlight data
             if (savedHighlightDefs && typeof savedHighlightDefs === 'object') {
@@ -1278,7 +1307,8 @@
               idbKeyval.set('bible_fontSize', this.fontSize),
               idbKeyval.set('bible_lineHeight', this.lineHeight),
               idbKeyval.set('bible_verseSpacing', this.verseSpacing),
-              idbKeyval.set('bible_fontFamily', this.fontFamily)
+              idbKeyval.set('bible_fontFamily', this.fontFamily),
+              idbKeyval.set('bible_zoom', this.zoom)
             ]);
           } catch (e) {
             console.warn('Failed to save reading preferences:', e);
@@ -1321,6 +1351,11 @@
           this.saveReadingPreferences();
         },
 
+        adjustZoom(delta) {
+          this.zoom = Math.max(50, Math.min(150, parseInt(this.zoom) + delta));
+          this.saveReadingPreferences();
+        },
+
         // Slider drag functionality
         startSliderDrag(event) {
           this.readingOverlay.isDragging = true;
@@ -1360,6 +1395,9 @@
           } else if (this.readingOverlay.activeTab === 2) {
             // Verse spacing: 0-64px (16 steps of 4)
             this.verseSpacing = Math.round(ratio * 16) * 4;
+          } else if (this.readingOverlay.activeTab === 4) {
+            // Zoom: 50-150% (20 steps of 5%)
+            this.zoom = Math.round((50 + ratio * 100) / 5) * 5;
           }
         },
 
