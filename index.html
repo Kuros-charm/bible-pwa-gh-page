@@ -71,7 +71,8 @@
     .section-title { color: var(--accent); font-weight: 700; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal-content { background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 400px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
-    .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; }
+    .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; transition: box-shadow 0.2s ease, border-radius 0.2s ease; }
+    .verse-selected { box-shadow: inset 0 0 0 2px var(--accent-light), inset 0 2px 8px rgba(139, 69, 19, 0.15); border-radius: 0.5rem; padding: 0.25rem 0.5rem; margin: -0.25rem -0.5rem; }
 
     /* === Dynamic content styles (used in x-html, can't use Tailwind) === */
     .sn-code { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; transition: color 0.2s; margin: 0 0.15em; }
@@ -95,62 +96,101 @@
 
   <div id="app" :style="`zoom: ${zoom / 100};`">
       <!-- Header -->
-  <header class="bg-secondary border-b border-custom sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-2 sm:px-4 py-3 flex items-center justify-between">
-      <!-- Left: App icon -->
-      <div class="flex items-center gap-2">
-        <span class="text-xl">📖</span>
+  <header class="bg-primary sticky top-0 z-50">
+    <!-- Top Row: Navigation & Controls -->
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+
+      <!-- Left: Menu placeholder for balance -->
+      <div class="w-10"></div>
+
+      <!-- Center: Book/Chapter & Version -->
+      <div class="flex items-center gap-3">
+        <!-- Location -->
+        <button @click="navModal.tab = 'chapters'; resetChapterRange(); navModal.show = true"
+          class="flex items-center gap-1 py-1.5 hover:opacity-70 transition-opacity">
+          <span class="text-base font-medium text-primary" x-text="selectedBookName + ' ' + selectedChapter + ' 章'"></span>
+          <svg class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <!-- Vertical Divider -->
+        <div class="w-px h-4" style="background-color: var(--border);"></div>
+
+        <!-- Version -->
+        <button @click="versionModal.show = true"
+          class="flex items-center gap-1 py-1.5 hover:opacity-70 transition-opacity">
+          <span class="text-base text-secondary" x-text="currentVersion.name"></span>
+          <svg class="w-3.5 h-3.5 text-secondary opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
       </div>
 
-      <!-- Center: Book and Chapter selector -->
-      <button @click="navModal.tab = 'chapters'; resetChapterRange(); navModal.show = true"
-        class="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-primary transition-colors">
-        <span class="font-semibold text-accent" x-text="selectedBookName"></span>
-        <span class="text-primary" x-text="selectedChapter + ' 章'"></span>
-        <span class="text-secondary text-sm ml-1">▼</span>
-      </button>
-
-      <!-- Right: Settings -->
-      <div class="flex items-center">
-        <button @click="settingsModal.show = true" class="p-2 rounded-full hover:bg-primary transition-colors"
-          title="設定">
-          <span class="text-xl">⚙️</span>
+      <!-- Right: Actions -->
+      <div class="flex items-center gap-1">
+        <button @click="headerSearchOpen = !headerSearchOpen; if (!headerSearchOpen) { searchQuery = ''; searchResults = []; } else { $nextTick(() => $refs.headerSearchInput?.focus()); }"
+          :class="headerSearchOpen ? 'text-accent bg-secondary' : 'text-secondary'"
+          class="p-2 rounded-full hover:bg-secondary transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </button>
+        <button @click="settingsModal.show = true" class="p-2 rounded-full hover:bg-secondary text-secondary transition-colors" title="設定">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
         </button>
       </div>
     </div>
-  </header>
 
-  <main class="max-w-4xl mx-auto px-2 sm:px-4 py-4">
-    <!-- Search -->
-    <div class="mb-6">
-      <div class="relative">
-        <input type="text" x-model="searchQuery" @input="search()" placeholder="搜尋經文..."
-          class="w-full px-4 py-3 pl-10 rounded-xl bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 text-base">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">🔍</span>
-        <button x-show="searchQuery" @click="clearSearch()"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary">✕</button>
+    <!-- Expandable Search Bar -->
+    <div class="overflow-hidden transition-all duration-300 ease-in-out"
+      :class="headerSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'">
+      <div class="max-w-4xl mx-auto px-4 pt-2 pb-3">
+        <div class="relative">
+          <input type="text" x-model="searchQuery" @input="search()" placeholder="搜尋經文..."
+            x-ref="headerSearchInput"
+            class="w-full bg-secondary border border-custom rounded-lg py-2 pl-4 pr-10 text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30 shadow-inner">
+          <button x-show="searchQuery" @click="clearSearch()"
+            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-secondary hover:text-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- Subtle bottom border -->
+    <div class="h-px w-full opacity-50" style="background: linear-gradient(to right, transparent, var(--border), transparent);"></div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-2 sm:px-4 py-4">
     <!-- Verses Display -->
     <div class="py-2 min-h-[400px]">
       <!-- Search Results -->
       <template x-if="searchQuery && searchResults.length > 0">
-        <div>
-          <h2 class="text-lg font-semibold text-accent mb-4">
+        <div :style="`display: flex; flex-direction: column; gap: ${verseSpacing}px;`">
+          <h2 class="text-lg font-semibold text-accent">
             搜尋結果 (<span x-text="searchResults.length"></span> 筆)
           </h2>
-          <div class="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin pr-2">
-            <template x-for="(verse, index) in searchResults.slice(0, 100)" :key="'search-' + index">
-              <div
-                class="verse-item p-4 bg-primary rounded-lg border border-custom cursor-pointer hover:border-amber-600 transition-colors"
-                :style="'animation-delay: ' + (index * 30) + 'ms'" @click="goToVerse(verse)">
-                <span class="text-accent font-semibold text-sm" x-html="highlightSearch(formatRef(verse.ref))"></span>
-                <p class="mt-1 text-primary leading-relaxed" x-html="highlightSearch(verse.text)"></p>
-              </div>
-            </template>
-          </div>
-          <p x-show="searchResults.length > 100" class="mt-4 text-secondary text-sm text-center">
+          <template x-for="(verse, index) in searchResults.slice(0, 100)" :key="'search-' + index">
+            <div class="verse-item pl-3 border-l-2 border-custom hover:border-accent cursor-pointer transition-colors"
+              :style="'animation-delay: ' + (index * 30) + 'ms'"
+              @click="goToVerse(verse)">
+              <!-- Reference as section title -->
+              <div class="section-title"
+                :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily}; margin-bottom: ${verseSpacing * 0.25}px;`"
+                x-html="highlightSearch(formatRef(verse.ref))"></div>
+              <!-- Verse text -->
+              <div :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+                class="text-primary"
+                x-html="highlightSearch(verse.text)"></div>
+            </div>
+          </template>
+          <p x-show="searchResults.length > 100" class="text-secondary text-sm text-center">
             顯示前 100 筆結果，共 <span x-text="searchResults.length"></span> 筆
           </p>
         </div>
@@ -169,11 +209,16 @@
         <div :style="`display: flex; flex-direction: column; gap: ${verseSpacing}px;`">
           <template x-for="(verse, index) in currentVerses" :key="'verse-' + index">
             <div>
-              <!-- Section Title (displayed before the verse) -->
-              <div x-show="customTitles[verse.ref]" class="section-title" :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily}; margin-top: ${verseSpacing * 0.75}px; margin-bottom: ${verseSpacing * 0.5}px;`" x-text="customTitles[verse.ref]"></div>
+              <!-- Section Title (displayed before the verse, click to edit) -->
+              <div x-show="customTitles[verse.ref]"
+                @click.stop="openTitleModalForVerse(verse)"
+                class="section-title cursor-pointer hover:opacity-70 transition-opacity"
+                :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily}; margin-top: ${verseSpacing * 0.75}px; margin-bottom: ${verseSpacing * 0.5}px;`"
+                x-text="customTitles[verse.ref]"></div>
               <!-- Verse Container -->
               <div class="verse-item verse-container"
                 :data-verse-num="verse.verseNum"
+                :class="{ 'verse-selected': verseActions.show && verseActions.verse?.ref === verse.ref }"
                 :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}30;` : '')"
                 @click="showVerseActions(verse)"
                 @contextmenu.prevent="showVerseActions(verse)">
@@ -181,6 +226,34 @@
                 <span x-html="renderVerseText(verse.text)"></span>
                 <button x-show="notes[verse.ref]" @click.stop="openNoteModal(verse)"
                   class="inline-flex ml-1 opacity-70 hover:opacity-100" title="查看筆記">✏️</button>
+              </div>
+              <!-- Comparison Verses -->
+              <div x-show="compareVerseRef === verse.ref && compareVerses.length > 0"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                class="mt-2 pl-1 border-l-2 border-accent/30"
+                :style="`display: flex; flex-direction: column; gap: ${verseSpacing * 0.5}px;`">
+                <template x-for="(cv, cvIdx) in compareVerses" :key="'compare-' + cvIdx">
+                  <div class="py-1">
+                    <div class="text-accent text-base font-medium mb-1" x-text="cv.versionName"></div>
+                    <div class="text-primary"
+                      :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+                      x-html="renderCompareVerseText(cv.text, cv.versionId)"></div>
+                  </div>
+                </template>
+                <!-- Close button -->
+                <button @click.stop="compareVerseRef = null; compareVerses = []"
+                  class="self-start text-sm text-secondary hover:text-accent transition-colors">
+                  ✕ 關閉對照
+                </button>
+              </div>
+              <!-- No other versions message -->
+              <div x-show="compareVerseRef === verse.ref && compareVerses.length === 0 && cachedVersions.length <= 1"
+                class="mt-2 pl-4 border-l-2 border-accent/30 py-2 text-secondary text-sm">
+                <p>尚未下載其他譯本。請至設定中下載其他譯本以使用對照功能。</p>
+                <button @click.stop="compareVerseRef = null"
+                  class="mt-1 text-accent hover:underline">關閉</button>
               </div>
             </div>
           </template>
@@ -257,70 +330,144 @@
         <button @click="openTitleModal()"
           class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
           <span class="text-xl">🏷️</span>
-          <span class="text-s">標題</span>
+          <span class="text-sm">標題</span>
         </button>
         <button @click="openNoteModal()"
           class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
           <span class="text-xl">📝</span>
-          <span class="text-s">筆記</span>
+          <span class="text-sm">筆記</span>
         </button>
         <button @click="openHighlightModal()"
           class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
           <span class="text-xl">🎨</span>
-          <span class="text-s">標註</span>
+          <span class="text-sm">標註</span>
+        </button>
+        <button @click="toggleCompare()"
+          :class="compareVerseRef === verseActions.verse?.ref ? 'bg-white/20' : ''"
+          class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
+          <span class="text-xl">📚</span>
+          <span class="text-sm">對照</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Title Input Modal -->
-  <div x-cloak x-show="titleModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Title Input Drawer (Bottom Sheet) -->
+  <div x-cloak x-show="titleModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="closeTitleModal()">
-    <div class="modal-content" x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-      <h3 class="text-lg font-semibold text-accent mb-2">自訂標題</h3>
-      <p class="text-secondary text-sm mb-4" x-text="titleModal.verse ? formatRef(titleModal.verse.ref) : ''"></p>
-      <input type="text" x-model="titleModal.title" x-ref="titleInput" @keydown.enter="saveTitle()"
-        @keydown.escape="closeTitleModal()" placeholder="輸入標題..."
-        :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily};`"
-        class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 mb-4">
-      <div class="flex justify-end gap-3">
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="closeTitleModal()">
+    <!-- Drawer Panel -->
+    <div x-show="titleModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+      </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="font-semibold text-accent flex items-center gap-1"
+          :style="`font-size: ${fontSize}rem;`">
+          <span>✏️</span>
+          <span>自訂標題</span>
+          <span class="text-secondary font-normal" x-text="titleModal.verse ? ' - ' + formatRef(titleModal.verse.ref) : ''"></span>
+        </h3>
         <button @click="closeTitleModal()"
-          class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
-          取消
+          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
-        <button @click="saveTitle()" class="px-4 py-2 rounded-lg text-white transition-colors"
-          style="background-color: var(--accent);">
-          儲存
-        </button>
+      </div>
+      <!-- Verse Reference -->
+      <div x-show="titleModal.verse" class="px-4 py-3 border-b overflow-y-auto max-h-[20vh]" style="border-color: var(--border); background-color: var(--bg-secondary);">
+        <p class="text-primary"
+          :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+          x-html="titleModal.verse ? renderVerseText(titleModal.verse.text) : ''"></p>
+      </div>
+      <!-- Content -->
+      <div class="flex-1 flex flex-col p-4 overflow-hidden">
+        <input type="text" x-model="titleModal.title" x-ref="titleInput" @keydown.enter="saveTitle()"
+          @keydown.escape="closeTitleModal()" placeholder="輸入標題..."
+          :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily};`"
+          class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600">
+        <div class="flex-1"></div>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="closeTitleModal()"
+            class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
+            取消
+          </button>
+          <button @click="saveTitle()" class="px-4 py-2 rounded-lg text-white transition-colors"
+            style="background-color: var(--accent);">
+            儲存
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Note Input Modal -->
-  <div x-cloak x-show="noteModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Note Input Drawer (Bottom Sheet) -->
+  <div x-cloak x-show="noteModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="closeNoteModal()">
-    <div class="modal-content" x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-      <h3 class="text-lg font-semibold text-accent mb-2">📝 筆記</h3>
-      <p class="text-secondary text-sm mb-4" x-text="noteModal.verse ? formatRef(noteModal.verse.ref) : ''"></p>
-      <textarea x-model="noteModal.note" x-ref="noteInput" @keydown.escape="closeNoteModal()" placeholder="輸入筆記..."
-        rows="5"
-        :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
-        class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 mb-4 resize-none"></textarea>
-      <div class="flex justify-end gap-3">
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="closeNoteModal()">
+    <!-- Drawer Panel -->
+    <div x-show="noteModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+      </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="font-semibold text-accent flex items-center gap-1"
+          :style="`font-size: ${fontSize}rem;`">
+          <span>📝</span>
+          <span>筆記</span>
+          <span class="text-secondary font-normal" x-text="noteModal.verse ? ' - ' + formatRef(noteModal.verse.ref) : ''"></span>
+        </h3>
         <button @click="closeNoteModal()"
-          class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
-          取消
+          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
-        <button @click="saveNote()" class="px-4 py-2 rounded-lg text-white transition-colors"
-          style="background-color: var(--accent);">
-          儲存
-        </button>
+      </div>
+      <!-- Verse Reference -->
+      <div x-show="noteModal.verse" class="px-4 py-3 border-b overflow-y-auto max-h-[20vh]" style="border-color: var(--border); background-color: var(--bg-secondary);">
+        <p class="text-primary"
+          :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+          x-html="noteModal.verse ? renderVerseText(noteModal.verse.text) : ''"></p>
+      </div>
+      <!-- Content -->
+      <div class="flex-1 flex flex-col p-4 overflow-hidden">
+        <textarea x-model="noteModal.note" x-ref="noteInput" @keydown.escape="closeNoteModal()" placeholder="輸入筆記..."
+          :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+          class="flex-1 w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none"></textarea>
+        <div class="flex justify-end gap-3 mt-4">
+          <button @click="closeNoteModal()"
+            class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
+            取消
+          </button>
+          <button @click="saveNote()" class="px-4 py-2 rounded-lg text-white transition-colors"
+            style="background-color: var(--accent);">
+            儲存
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -392,27 +539,48 @@
     </div>
   </div>
 
-  <!-- Strong's Number Definition Modal -->
-  <div x-cloak x-show="snModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Strong's Number Definition Drawer (Bottom Sheet) -->
+  <div x-cloak x-show="snModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="snModal.show = false">
-    <div class="modal-content max-w-lg" x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold text-accent flex items-center gap-2">
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="snModal.show = false">
+    <!-- Drawer Panel -->
+    <div x-show="snModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl max-h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+      </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="font-semibold text-accent flex items-center gap-2"
+          :style="`font-size: ${fontSize}rem;`">
           <span>📖</span>
           <span x-text="snModal.code"></span>
         </h3>
-        <button @click="snModal.show = false" class="p-1 hover:bg-secondary rounded-full transition-colors">
-          <span class="text-xl text-secondary">✕</span>
+        <button @click="snModal.show = false"
+          class="p-2 hover:bg-secondary rounded-full transition-colors">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
-      <div class="max-h-[60vh] overflow-y-auto">
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto p-4"
+        :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`">
         <div x-show="snModal.loading" class="flex items-center justify-center py-8">
           <span class="animate-pulse text-2xl">⏳</span>
         </div>
-        <div x-show="!snModal.loading && snModal.definition" class="whitespace-pre-wrap leading-relaxed text-primary" x-html="snModal.definition"></div>
+        <div x-show="!snModal.loading && snModal.definition"
+          class="whitespace-pre-wrap text-primary"
+          x-html="snModal.definition"></div>
         <div x-show="!snModal.loading && !snModal.definition" class="text-secondary text-center py-8">
           <span class="text-2xl block mb-2">❓</span>
           <p>找不到定義</p>
@@ -585,289 +753,360 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
-  <div x-cloak x-show="settingsModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Settings Drawer (Bottom Sheet) -->
+  <div x-cloak x-show="settingsModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="settingsModal.show = false">
-    <div class="modal-content max-w-md max-h-[85vh] overflow-y-auto" x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-      <h3 class="text-lg font-semibold text-accent mb-4">⚙️ 設定</h3>
-
-      <!-- Appearance Section -->
-      <div class="space-y-3 mb-6">
-        <h4 class="font-medium text-primary">🎨 外觀</h4>
-
-        <!-- Dark Mode Toggle -->
-        <div class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom">
-          <div class="flex items-center gap-3">
-            <span class="text-lg" x-text="isDark ? '🌙' : '☀️'"></span>
-            <span class="text-primary">深色模式</span>
-          </div>
-          <button @click="toggleDarkMode()"
-            :class="isDark ? 'bg-amber-600' : 'bg-gray-400'"
-            class="relative w-12 h-6 rounded-full transition-colors">
-            <span :class="isDark ? 'translate-x-6' : 'translate-x-1'"
-              class="absolute top-1 left-0 w-4 h-4 bg-white rounded-full transition-transform shadow"></span>
-          </button>
-        </div>
-
-        <!-- Reading Display -->
-        <button @click="showReadingOverlay()"
-          class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
-          <div class="flex items-center gap-3">
-            <span class="text-lg">📐</span>
-            <span class="text-primary">調整顯示</span>
-          </div>
-          <div class="text-secondary text-sm">
-            <span x-text="currentFontFamilyName"></span>
-          </div>
-        </button>
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="settingsModal.show = false">
+    <!-- Drawer Panel -->
+    <div x-show="settingsModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
       </div>
-
-      <!-- Bible Version Section -->
-      <div class="space-y-3 mb-6">
-        <h4 class="font-medium text-primary">📚 聖經版本</h4>
-
-        <button @click="versionModal.show = true; settingsModal.show = false"
-          class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
-          <div class="flex items-center gap-3">
-            <span class="text-lg">📖</span>
-            <span class="text-primary" x-text="currentVersion.name"></span>
-          </div>
-          <span class="text-secondary text-sm">切換 ▶</span>
-        </button>
-      </div>
-
-      <!-- Data Sync Section -->
-      <div class="space-y-3 mb-6">
-        <h4 class="font-medium text-primary">📂 資料備份</h4>
-
-        <!-- Buttons row (when File System API supported) -->
-        <div x-show="hasFileSystemAccess" class="grid grid-cols-3 gap-2">
-          <!-- Save Button -->
-          <button @click="saveToFile()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>💾</span>
-            <span class="text-sm">儲存</span>
-          </button>
-
-          <!-- Download Backup Button -->
-          <button @click="downloadBackup()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>⬇️</span>
-            <span class="text-sm">建立備份</span>
-          </button>
-
-          <!-- Open File Button -->
-          <button @click="importData()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>📂</span>
-            <span class="text-sm">開啟檔案</span>
-          </button>
-        </div>
-
-        <!-- Buttons row (when File System API NOT supported) -->
-        <div x-show="!hasFileSystemAccess" class="grid grid-cols-2 gap-2">
-          <!-- Download Backup Button -->
-          <button @click="downloadBackup()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>⬇️</span>
-            <span class="text-sm">建立備份</span>
-          </button>
-
-          <!-- Open File Button -->
-          <button @click="importData()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>📂</span>
-            <span class="text-sm">開啟檔案</span>
-          </button>
-        </div>
-
-        <!-- Auto-save checkbox with file info -->
-        <div class="p-3 rounded-lg bg-primary border border-custom">
-          <label class="flex items-center gap-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': !hasFileSystemAccess }">
-            <input type="checkbox" x-model="autoSync" @change="saveAutoSyncPreference()"
-              :disabled="!hasFileSystemAccess"
-              class="w-5 h-5 rounded border-gray-300 text-accent focus:ring-accent">
-            <div class="flex-1">
-              <p class="font-medium text-primary">自動儲存</p>
-              <p class="text-sm text-secondary" x-text="fileHandle ? '已選擇：' + fileHandle.name : (hasFileSystemAccess ? '尚未選擇檔案' : '瀏覽器不支援檔案系統 API')"></p>
-            </div>
-          </label>
-          <!-- Re-select file button -->
-          <button x-show="hasFileSystemAccess && fileHandle" @click="reselectFile()" :disabled="settingsModal.isBusy"
-            class="mt-2 w-full text-sm text-accent hover:underline disabled:opacity-50">
-            重新選擇檔案
-          </button>
-        </div>
-      </div>
-
-      <!-- Status Message -->
-      <div x-show="settingsModal.message" class="mb-4 p-3 rounded-lg"
-        :class="settingsModal.isError ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'">
-        <p class="text-sm" x-text="settingsModal.message"></p>
-      </div>
-
-      <!-- Cache Section -->
-      <div class="space-y-3 mb-6">
-        <h4 class="font-medium text-primary">🗄️ 快取管理</h4>
-        <button @click="clearAllVersions()" x-show="cachedVersions.length > 1"
-          class="w-full text-sm text-red-500 hover:text-red-600 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-200 dark:border-red-800">
-          清除所有快取（保留目前使用中的譯本）
-        </button>
-        <p x-show="cachedVersions.length <= 1" class="text-sm text-secondary">目前無額外快取可清除</p>
-      </div>
-
-      <!-- Close Button -->
-      <div class="flex justify-end">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="font-semibold text-accent flex items-center gap-2"
+          :style="`font-size: ${fontSize * 1.1}rem;`">
+          <span>⚙️</span>
+          <span>設定</span>
+        </h3>
         <button @click="settingsModal.show = false"
-          class="px-4 py-2 rounded-lg text-white transition-colors"
-          style="background-color: var(--accent);">
-          關閉
+          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
+      </div>
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto p-4" :style="`font-size: ${fontSize}rem;`">
+        <!-- Appearance Section -->
+        <div class="space-y-3 mb-6">
+          <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">🎨 外觀</h4>
+
+          <!-- Dark Mode Toggle -->
+          <div class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom">
+            <div class="flex items-center gap-3">
+              <span x-text="isDark ? '🌙' : '☀️'"></span>
+              <span class="text-primary">深色模式</span>
+            </div>
+            <button @click="toggleDarkMode()"
+              :class="isDark ? 'bg-amber-600' : 'bg-gray-400'"
+              class="relative w-12 h-6 rounded-full transition-colors">
+              <span :class="isDark ? 'translate-x-6' : 'translate-x-1'"
+                class="absolute top-1 left-0 w-4 h-4 bg-white rounded-full transition-transform shadow"></span>
+            </button>
+          </div>
+
+          <!-- Reading Display -->
+          <button @click="showReadingOverlay()"
+            class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
+            <div class="flex items-center gap-3">
+              <span>📐</span>
+              <span class="text-primary">調整顯示</span>
+            </div>
+            <div class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">
+              <span x-text="currentFontFamilyName"></span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Bible Version Section -->
+        <div class="space-y-3 mb-6">
+          <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">📚 聖經版本</h4>
+
+          <button @click="versionModal.show = true; settingsModal.show = false"
+            class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
+            <div class="flex items-center gap-3">
+              <span>📖</span>
+              <span class="text-primary" x-text="currentVersion.name"></span>
+            </div>
+            <span class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">切換 ▶</span>
+          </button>
+        </div>
+
+        <!-- Data Sync Section -->
+        <div class="space-y-3 mb-6">
+          <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">📂 資料備份</h4>
+
+          <!-- Buttons row (when File System API supported) -->
+          <div x-show="hasFileSystemAccess" class="grid grid-cols-3 gap-2">
+            <!-- Save Button -->
+            <button @click="saveToFile()" :disabled="settingsModal.isBusy"
+              class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+              <span>💾</span>
+              <span :style="`font-size: ${fontSize * 0.85}rem;`">儲存</span>
+            </button>
+
+            <!-- Download Backup Button -->
+            <button @click="downloadBackup()" :disabled="settingsModal.isBusy"
+              class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+              <span>⬇️</span>
+              <span :style="`font-size: ${fontSize * 0.85}rem;`">建立備份</span>
+            </button>
+
+            <!-- Open File Button -->
+            <button @click="importData()" :disabled="settingsModal.isBusy"
+              class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+              <span>📂</span>
+              <span :style="`font-size: ${fontSize * 0.85}rem;`">開啟檔案</span>
+            </button>
+          </div>
+
+          <!-- Buttons row (when File System API NOT supported) -->
+          <div x-show="!hasFileSystemAccess" class="grid grid-cols-2 gap-2">
+            <!-- Download Backup Button -->
+            <button @click="downloadBackup()" :disabled="settingsModal.isBusy"
+              class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+              <span>⬇️</span>
+              <span :style="`font-size: ${fontSize * 0.85}rem;`">建立備份</span>
+            </button>
+
+            <!-- Open File Button -->
+            <button @click="importData()" :disabled="settingsModal.isBusy"
+              class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+              <span>📂</span>
+              <span :style="`font-size: ${fontSize * 0.85}rem;`">開啟檔案</span>
+            </button>
+          </div>
+
+          <!-- Auto-save checkbox with file info -->
+          <div class="p-3 rounded-lg bg-primary border border-custom">
+            <label class="flex items-center gap-3 cursor-pointer" :class="{ 'opacity-50 cursor-not-allowed': !hasFileSystemAccess }">
+              <input type="checkbox" x-model="autoSync" @change="saveAutoSyncPreference()"
+                :disabled="!hasFileSystemAccess"
+                class="w-5 h-5 rounded border-gray-300 text-accent focus:ring-accent">
+              <div class="flex-1">
+                <p class="font-medium text-primary">自動儲存</p>
+                <p class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`" x-text="fileHandle ? '已選擇：' + fileHandle.name : (hasFileSystemAccess ? '尚未選擇檔案' : '瀏覽器不支援檔案系統 API')"></p>
+              </div>
+            </label>
+            <!-- Re-select file button -->
+            <button x-show="hasFileSystemAccess && fileHandle" @click="reselectFile()" :disabled="settingsModal.isBusy"
+              class="mt-2 w-full text-accent hover:underline disabled:opacity-50" :style="`font-size: ${fontSize * 0.85}rem;`">
+              重新選擇檔案
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Message -->
+        <div x-show="settingsModal.message" class="mb-4 p-3 rounded-lg"
+          :class="settingsModal.isError ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'">
+          <p :style="`font-size: ${fontSize * 0.85}rem;`" x-text="settingsModal.message"></p>
+        </div>
+
+        <!-- Cache Section -->
+        <div class="space-y-3 mb-6">
+          <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">🗄️ 快取管理</h4>
+          <button @click="clearAllVersions()" x-show="cachedVersions.length > 1"
+            class="w-full text-red-500 hover:text-red-600 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-200 dark:border-red-800"
+            :style="`font-size: ${fontSize * 0.85}rem;`">
+            清除所有快取（保留目前使用中的譯本）
+          </button>
+          <p x-show="cachedVersions.length <= 1" class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">目前無額外快取可清除</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Navigation Modal (Book & Chapter Selection) -->
-  <div x-cloak x-show="navModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Navigation Drawer (Book & Chapter Selection) -->
+  <div x-cloak x-show="navModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="navModal.show = false">
-    <div class="modal-content max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
-      x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-
-      <!-- Tab Header -->
-      <div class="flex gap-1 mb-4 -mt-1">
-        <button @click="navModal.tab = 'books'"
-          :class="navModal.tab === 'books' ? 'text-accent' : 'text-secondary hover:text-primary'"
-          class="flex-1 py-2 flex items-center justify-center gap-2 font-medium transition-colors border-b-2"
-          :style="navModal.tab === 'books' ? 'border-color: var(--accent)' : 'border-color: transparent'">
-          <span>📚</span>
-          <span>書卷目錄</span>
-        </button>
-        <button @click="navModal.tab = 'chapters'"
-          :class="navModal.tab === 'chapters' ? 'text-accent' : 'text-secondary hover:text-primary'"
-          class="flex-1 py-2 flex items-center justify-center gap-2 font-medium transition-colors border-b-2"
-          :style="navModal.tab === 'chapters' ? 'border-color: var(--accent)' : 'border-color: transparent'">
-          <span>📖</span>
-          <span x-text="selectedBookName"></span>
-        </button>
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="navModal.show = false">
+    <!-- Drawer Panel -->
+    <div x-show="navModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
       </div>
-
-      <!-- Book Selection Tab -->
-      <div x-show="navModal.tab === 'books'" class="flex-1 overflow-hidden flex flex-col">
-        <!-- Testament Toggle -->
-        <div class="flex rounded-lg border border-custom overflow-hidden mb-3">
-          <button @click="navModal.testament = 'old'; navModal.category = bookCategoriesOT[0].id"
-            :class="navModal.testament === 'old' ? 'bg-secondary text-primary' : 'bg-primary text-secondary hover:bg-secondary/50'"
-            class="flex-1 py-2.5 text-center font-medium transition-colors">
-            舊約
+      <!-- Header with Tabs -->
+      <div class="flex items-center justify-between px-4 pb-2 border-b" style="border-color: var(--border);">
+        <div class="flex gap-1 flex-1">
+          <button @click="navModal.tab = 'books'"
+            :class="navModal.tab === 'books' ? 'text-accent' : 'text-secondary hover:text-primary'"
+            class="flex-1 py-2 flex items-center justify-center gap-2 font-medium transition-colors border-b-2"
+            :style="`font-size: ${fontSize}rem; ` + (navModal.tab === 'books' ? 'border-color: var(--accent)' : 'border-color: transparent')">
+            <span>📚</span>
+            <span>書卷目錄</span>
           </button>
-          <button @click="navModal.testament = 'new'; navModal.category = bookCategoriesNT[0].id"
-            :class="navModal.testament === 'new' ? 'bg-secondary text-primary' : 'bg-primary text-secondary hover:bg-secondary/50'"
-            class="flex-1 py-2.5 text-center font-medium transition-colors">
-            新約
-          </button>
-        </div>
-
-        <!-- Category Pills -->
-        <div class="flex flex-wrap gap-2 mb-3">
-          <template x-for="cat in (navModal.testament === 'old' ? bookCategoriesOT : bookCategoriesNT)" :key="cat.id">
-            <button @click="navModal.category = cat.id"
-              :class="navModal.category === cat.id ? 'bg-accent text-white' : 'bg-primary text-secondary border border-custom hover:border-accent'"
-              class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
-              x-text="cat.name"></button>
-          </template>
-        </div>
-
-        <!-- Book Grid -->
-        <div class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
-          <div class="grid grid-cols-2 gap-2">
-            <template x-for="bookCode in getFilteredBooks()" :key="'nav-book-' + bookCode">
-              <button @click="selectedBook = bookCode; onBookChange(); resetChapterRange(); navModal.tab = 'chapters'"
-                class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:bg-secondary transition-colors text-left">
-                <span class="font-medium text-primary" x-text="getBookName(bookCode)"></span>
-                <div class="flex items-center gap-2">
-                  <span x-show="selectedBook === bookCode" class="w-2 h-2 rounded-full bg-accent"></span>
-                  <span class="text-secondary text-sm">→</span>
-                </div>
-              </button>
-            </template>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chapter Selection Tab -->
-      <div x-show="navModal.tab === 'chapters'" class="flex-1 overflow-hidden flex flex-col">
-        <!-- Current Selection -->
-        <div class="mb-3">
-          <p class="text-sm text-accent font-medium mb-1">📖 目前選擇</p>
-          <p class="text-xl font-bold text-primary">
+          <button @click="navModal.tab = 'chapters'"
+            :class="navModal.tab === 'chapters' ? 'text-accent' : 'text-secondary hover:text-primary'"
+            class="flex-1 py-2 flex items-center justify-center gap-2 font-medium transition-colors border-b-2"
+            :style="`font-size: ${fontSize}rem; ` + (navModal.tab === 'chapters' ? 'border-color: var(--accent)' : 'border-color: transparent')">
+            <span>📖</span>
             <span x-text="selectedBookName"></span>
-            <span class="text-secondary font-normal"> / </span>
-            <span>第 <span x-text="selectedChapter"></span> 章</span>
-          </p>
+          </button>
         </div>
+        <button @click="navModal.show = false"
+          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0 ml-2">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
 
-        <!-- Chapter Range Filter (only show when > 40 chapters) -->
-        <div x-show="showChapterRanges" class="flex flex-wrap gap-2 mb-3">
-          <template x-for="(range, idx) in chapterRanges" :key="'range-' + idx">
-            <button @click="navModal.chapterRange = idx"
-              :class="navModal.chapterRange === idx ? 'bg-accent text-white' : 'bg-primary text-secondary border border-custom hover:border-accent'"
-              class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
-              x-text="range.label"></button>
-          </template>
-        </div>
+      <!-- Content -->
+      <div class="flex-1 overflow-hidden flex flex-col p-4">
+        <!-- Book Selection Tab -->
+        <div x-show="navModal.tab === 'books'" class="flex-1 overflow-hidden flex flex-col">
+          <!-- Testament Toggle -->
+          <div class="flex rounded-lg border border-custom overflow-hidden mb-3">
+            <button @click="navModal.testament = 'old'; navModal.category = bookCategoriesOT[0].id"
+              :class="navModal.testament === 'old' ? 'bg-secondary text-primary' : 'bg-primary text-secondary hover:bg-secondary/50'"
+              class="flex-1 py-2.5 text-center font-medium transition-colors"
+              :style="`font-size: ${fontSize}rem;`">
+              舊約
+            </button>
+            <button @click="navModal.testament = 'new'; navModal.category = bookCategoriesNT[0].id"
+              :class="navModal.testament === 'new' ? 'bg-secondary text-primary' : 'bg-primary text-secondary hover:bg-secondary/50'"
+              class="flex-1 py-2.5 text-center font-medium transition-colors"
+              :style="`font-size: ${fontSize}rem;`">
+              新約
+            </button>
+          </div>
 
-        <!-- Chapter Grid -->
-        <div class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
-          <div class="grid grid-cols-5 gap-2">
-            <template x-for="chapter in getFilteredChapters()" :key="'nav-ch-' + chapter">
-              <button @click="selectedChapter = chapter; loadVerses(); navModal.show = false; window.scrollTo({ top: 0, behavior: 'smooth' })"
-                :class="selectedChapter === chapter ? 'bg-accent text-white' : 'bg-primary hover:bg-secondary text-primary border border-custom'"
-                class="aspect-square rounded-lg flex items-center justify-center text-lg font-medium transition-all"
-                x-text="chapter"></button>
+          <!-- Category Pills -->
+          <div class="flex flex-wrap gap-2 mb-3">
+            <template x-for="cat in (navModal.testament === 'old' ? bookCategoriesOT : bookCategoriesNT)" :key="cat.id">
+              <button @click="navModal.category = cat.id"
+                :class="navModal.category === cat.id ? 'bg-accent text-white' : 'bg-primary text-secondary border border-custom hover:border-accent'"
+                class="px-3 py-1.5 rounded-full font-medium transition-colors"
+                :style="`font-size: ${fontSize * 0.85}rem;`"
+                x-text="cat.name"></button>
             </template>
+          </div>
+
+          <!-- Book Grid -->
+          <div class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
+            <div class="grid grid-cols-2 gap-2">
+              <template x-for="bookCode in getFilteredBooks()" :key="'nav-book-' + bookCode">
+                <button @click="selectedBook = bookCode; onBookChange(); resetChapterRange(); navModal.tab = 'chapters'"
+                  class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:bg-secondary transition-colors text-left">
+                  <span class="font-medium text-primary" :style="`font-size: ${fontSize}rem;`" x-text="getBookName(bookCode)"></span>
+                  <div class="flex items-center gap-2">
+                    <span x-show="selectedBook === bookCode" class="w-2 h-2 rounded-full bg-accent"></span>
+                    <span class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">→</span>
+                  </div>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chapter Selection Tab -->
+        <div x-show="navModal.tab === 'chapters'" class="flex-1 overflow-hidden flex flex-col">
+          <!-- Current Selection -->
+          <div class="mb-3">
+            <p class="text-accent font-medium mb-1" :style="`font-size: ${fontSize * 0.85}rem;`">📖 目前選擇</p>
+            <p class="font-bold text-primary" :style="`font-size: ${fontSize * 1.15}rem;`">
+              <span x-text="selectedBookName"></span>
+              <span class="text-secondary font-normal"> / </span>
+              <span>第 <span x-text="selectedChapter"></span> 章</span>
+            </p>
+          </div>
+
+          <!-- Chapter Range Quick Jump (only show when > 20 chapters) -->
+          <div x-show="showChapterRanges" class="flex flex-wrap gap-2 mb-3">
+            <template x-for="(range, idx) in chapterRanges" :key="'range-' + idx">
+              <button @click="scrollToChapterRange(idx)"
+                :class="navModal.chapterRange === idx ? 'bg-accent text-white' : 'bg-primary text-secondary border border-custom hover:border-accent'"
+                class="px-3 py-1.5 rounded-full font-medium transition-colors"
+                :style="`font-size: ${fontSize * 0.85}rem;`"
+                x-text="range.label"></button>
+            </template>
+          </div>
+
+          <!-- Chapter Grid -->
+          <div x-ref="chapterGrid" @scroll.throttle.100ms="onChapterGridScroll()" class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
+            <div class="grid grid-cols-5 gap-2">
+              <template x-for="chapter in chapters" :key="'nav-ch-' + chapter">
+                <button @click="selectedChapter = chapter; loadVerses(); navModal.show = false; window.scrollTo({ top: 0, behavior: 'smooth' })"
+                  :class="selectedChapter === chapter ? 'bg-accent text-white' : 'bg-primary hover:bg-secondary text-primary border border-custom'"
+                  class="aspect-square rounded-lg flex items-center justify-center font-medium transition-all"
+                  :style="`font-size: ${fontSize * 1.1}rem;`"
+                  x-text="chapter"></button>
+              </template>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Version Selector Modal -->
-  <div x-cloak x-show="versionModal.show" x-transition:enter="transition ease-out duration-200"
+  <!-- Version Selector Drawer (Bottom Sheet) -->
+  <div x-cloak x-show="versionModal.show"
+    x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" class="modal-overlay" @click.self="versionModal.show = false">
-    <div class="modal-content max-w-lg max-h-[80vh] overflow-hidden flex flex-col" x-transition:enter="transition ease-out duration-200"
-      x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-accent">📚 選擇譯本</h3>
-        <button @click="versionModal.show = false" class="p-1 hover:bg-secondary rounded-full transition-colors">
-          <span class="text-xl text-secondary">✕</span>
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[200] bg-black/40" @click.self="versionModal.show = false">
+    <!-- Drawer Panel -->
+    <div x-show="versionModal.show"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
+      x-transition:leave-end="translate-y-full"
+      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl h-[75vh] shadow-2xl flex flex-col rounded-t-2xl"
+      style="background-color: var(--bg-primary);">
+      <!-- Drag Handle -->
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+      </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
+        <h3 class="font-semibold text-accent flex items-center gap-2"
+          :style="`font-size: ${fontSize * 1.1}rem;`">
+          <span>📚</span>
+          <span>選擇譯本</span>
+        </h3>
+        <button @click="versionModal.show = false"
+          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
+          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
-
-      <div class="overflow-y-auto flex-1 -mx-2 px-2 scrollbar-thin">
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto p-4 scrollbar-thin">
         <!-- Group by language -->
         <template x-for="lang in ['繁體中文', 'English', 'Ελληνικά', 'עברית']" :key="lang">
           <div x-show="availableVersions.filter(v => v.lang === lang).length > 0" class="mb-4">
-            <h4 class="text-sm font-semibold text-secondary mb-2" x-text="lang"></h4>
+            <h4 class="font-semibold text-secondary mb-2" :style="`font-size: ${fontSize * 0.9}rem;`" x-text="lang"></h4>
             <div class="space-y-2">
               <template x-for="version in availableVersions.filter(v => v.lang === lang)" :key="version.id">
                 <div class="p-3 rounded-lg border border-custom transition-colors"
                   :class="selectedVersionId === version.id ? 'bg-primary border-amber-600' : 'hover:bg-primary'">
                   <div class="flex items-center justify-between">
                     <div class="flex-1">
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium text-primary" x-text="version.name"></span>
-                        <span x-show="selectedVersionId === version.id" class="text-sm px-1.5 py-0.5 rounded bg-amber-600 text-white">使用中</span>
-                        <span x-show="isVersionCached(version.id) && selectedVersionId !== version.id" class="text-sm px-1.5 py-0.5 rounded bg-green-600 text-white">已下載</span>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-medium text-primary" :style="`font-size: ${fontSize}rem;`" x-text="version.name"></span>
+                        <template x-if="selectedVersionId === version.id">
+                          <span class="px-1.5 py-0.5 rounded bg-amber-600 text-white"
+                            :style="`font-size: ${fontSize * 0.75}rem;`">使用中</span>
+                        </template>
+                        <template x-if="isVersionCached(version.id) && selectedVersionId !== version.id">
+                          <span class="px-1.5 py-0.5 rounded bg-green-600 text-white"
+                            :style="`font-size: ${fontSize * 0.75}rem;`">已下載</span>
+                        </template>
                       </div>
-                      <p class="text-sm text-secondary mt-0.5" x-text="version.size"></p>
+                      <p class="text-secondary mt-0.5" :style="`font-size: ${fontSize * 0.85}rem;`" x-text="version.size"></p>
                     </div>
                     <div class="flex items-center gap-2">
                       <!-- Delete button for cached versions (not currently selected) -->
@@ -875,14 +1114,14 @@
                         @click="deleteVersion(version.id)"
                         class="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                         title="刪除快取">
-                        <span class="text-sm">🗑️</span>
+                        <span :style="`font-size: ${fontSize * 0.85}rem;`">🗑️</span>
                       </button>
                       <!-- Select/Download button -->
                       <button @click="selectVersion(version.id)"
                         :disabled="versionModal.downloading === version.id"
-                        class="px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50"
+                        class="px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                         :class="selectedVersionId === version.id ? 'bg-secondary text-secondary cursor-default' : 'text-white'"
-                        :style="selectedVersionId !== version.id ? 'background-color: var(--accent);' : ''">
+                        :style="`font-size: ${fontSize * 0.85}rem; ` + (selectedVersionId !== version.id ? 'background-color: var(--accent);' : '')">
                         <span x-show="versionModal.downloading === version.id" class="flex items-center gap-1">
                           <span class="animate-spin">⏳</span> 下載中...
                         </span>
@@ -898,9 +1137,9 @@
           </div>
         </template>
       </div>
-
-      <div class="mt-4 pt-4 border-t border-custom">
-        <p class="text-sm text-secondary text-center">已快取 <span x-text="cachedVersions.length"></span> 個譯本</p>
+      <!-- Footer -->
+      <div class="px-4 py-3 border-t" style="border-color: var(--border);">
+        <p class="text-secondary text-center" :style="`font-size: ${fontSize * 0.85}rem;`">已快取 <span x-text="cachedVersions.length"></span> 個譯本</p>
       </div>
     </div>
   </div>
@@ -1032,6 +1271,7 @@
         currentVerses: [],
         searchQuery: '',
         searchResults: [],
+        headerSearchOpen: false,
         totalVerses: 0,
         bibleData: {},
         customTitles: {},
@@ -1065,6 +1305,8 @@
           show: false,
           verse: null
         },
+        compareVerseRef: null,  // ref of verse being compared
+        compareVerses: [],      // array of {versionName, versionId, text} for comparison
         titleModal: {
           show: false,
           verse: null,
@@ -1094,7 +1336,7 @@
           definition: '',
           loading: false
         },
-        snDictionary: {},  // Cache for Strong's Number dictionary
+        snDictTexts: {},  // Cache for raw dictionary text by version ID
         snDictLoading: false,
         hasFileSystemAccess: false,
         fileHandle: null,
@@ -1442,16 +1684,16 @@
           return allBooksInTestament.filter(code => this.books.includes(code));
         },
 
-        // Check if chapter ranges should be shown (more than 40 chapters)
+        // Check if chapter ranges should be shown (more than 20 chapters)
         get showChapterRanges() {
-          return this.chapters.length > 40;
+          return this.chapters.length > 20;
         },
 
-        // Get chapter range options (e.g., [{start: 1, end: 30, label: "1-30"}, ...])
+        // Get chapter range options (e.g., [{start: 1, end: 20, label: "1-20"}, ...])
         get chapterRanges() {
           if (!this.showChapterRanges) return [];
           const ranges = [];
-          const rangeSize = 30;
+          const rangeSize = 20;
           const maxChapter = Math.max(...this.chapters);
           for (let start = 1; start <= maxChapter; start += rangeSize) {
             const end = Math.min(start + rangeSize - 1, maxChapter);
@@ -1473,7 +1715,7 @@
           return this.chapters.filter(ch => ch >= range.start && ch <= range.end);
         },
 
-        // Reset chapter range when book changes
+        // Reset chapter range when book changes and scroll to current chapter
         resetChapterRange() {
           // Find the range that contains the current chapter
           if (this.showChapterRanges) {
@@ -1482,8 +1724,71 @@
               this.selectedChapter >= r.start && this.selectedChapter <= r.end
             );
             this.navModal.chapterRange = rangeIndex >= 0 ? rangeIndex : 0;
+            // Scroll to current chapter range after drawer opens
+            this.$nextTick(() => {
+              this.scrollToChapterRange(this.navModal.chapterRange, false);
+            });
           } else {
             this.navModal.chapterRange = 0;
+          }
+        },
+
+        // Scroll to a specific chapter range in the grid
+        scrollToChapterRange(rangeIdx, smooth = true) {
+          const grid = this.$refs.chapterGrid;
+          if (!grid) return;
+
+          const ranges = this.chapterRanges;
+          if (rangeIdx < 0 || rangeIdx >= ranges.length) return;
+
+          // Each range is 20 chapters, 5 per row = 4 rows per range
+          // Calculate row height from first button
+          const firstButton = grid.querySelector('button');
+          if (!firstButton) return;
+
+          const buttonStyle = window.getComputedStyle(firstButton);
+          const buttonHeight = firstButton.offsetHeight;
+          const gap = parseFloat(window.getComputedStyle(grid.querySelector('.grid')).gap) || 8;
+          const rowHeight = buttonHeight + gap;
+
+          // Each range = 20 chapters = 4 rows (5 chapters per row)
+          const rowsPerRange = 4;
+          const targetRow = rangeIdx * rowsPerRange;
+          const scrollTop = targetRow * rowHeight;
+
+          grid.scrollTo({
+            top: scrollTop,
+            behavior: smooth ? 'smooth' : 'auto'
+          });
+
+          this.navModal.chapterRange = rangeIdx;
+        },
+
+        // Handle chapter grid scroll to sync range selection
+        onChapterGridScroll() {
+          if (!this.showChapterRanges) return;
+
+          const grid = this.$refs.chapterGrid;
+          if (!grid) return;
+
+          const firstButton = grid.querySelector('button');
+          if (!firstButton) return;
+
+          const buttonHeight = firstButton.offsetHeight;
+          const gap = parseFloat(window.getComputedStyle(grid.querySelector('.grid')).gap) || 8;
+          const rowHeight = buttonHeight + gap;
+
+          // 4 rows per range (20 chapters / 5 per row)
+          const rowsPerRange = 4;
+          const rangeHeight = rowsPerRange * rowHeight;
+
+          // Calculate which range is most visible
+          const scrollTop = grid.scrollTop;
+          const currentRange = Math.floor((scrollTop + rowHeight) / rangeHeight);
+
+          const ranges = this.chapterRanges;
+          if (currentRange >= 0 && currentRange < ranges.length) {
+            this.navModal.chapterRange = currentRange;
           }
         },
 
@@ -1594,9 +1899,6 @@
           this.selectedVersionId = versionId;
           await this.saveSelectedVersion();
           this.versionModal.show = false;
-
-          // Clear SN dictionary when switching versions
-          this.snDictionary = {};
 
           // Reload verses
           await this.parseVerses();
@@ -1889,12 +2191,17 @@
         // Title modal
         openTitleModal() {
           const verse = this.verseActions.verse;
+          this.openTitleModalForVerse(verse);
+          this.hideVerseActions();
+        },
+
+        // Open title modal for a specific verse (used for direct click on title)
+        openTitleModalForVerse(verse) {
           this.titleModal = {
             show: true,
             verse: verse,
             title: this.customTitles[verse.ref] || ''
           };
-          this.hideVerseActions();
 
           // Focus input after modal opens
           this.$nextTick(() => {
@@ -1970,6 +2277,56 @@
         closeHighlightModal() {
           this.highlightModal.show = false;
           this.highlightModal.editingId = null;
+        },
+
+        // Compare/Parallel versions
+        async toggleCompare() {
+          const verse = this.verseActions.verse;
+          if (!verse) return;
+
+          // If already comparing this verse, close it
+          if (this.compareVerseRef === verse.ref) {
+            this.compareVerseRef = null;
+            this.compareVerses = [];
+            this.hideVerseActions();
+            return;
+          }
+
+          // Load comparison from other cached versions
+          this.compareVerseRef = verse.ref;
+          this.compareVerses = [];
+          this.hideVerseActions();
+
+          // Get other cached versions (excluding current)
+          const otherVersions = this.cachedVersions.filter(id => id !== this.selectedVersionId);
+
+          for (const versionId of otherVersions) {
+            try {
+              const cachedData = await idbKeyval.get(`bible_version_${versionId}`);
+              if (cachedData) {
+                const verseText = this.findVerseInRawText(cachedData, verse.ref);
+                if (verseText) {
+                  const versionInfo = this.availableVersions.find(v => v.id === versionId);
+                  this.compareVerses.push({
+                    versionId,
+                    versionName: versionInfo?.name || versionId,
+                    text: verseText
+                  });
+                }
+              }
+            } catch (e) {
+              console.warn(`Failed to load version ${versionId} for comparison:`, e);
+            }
+          }
+        },
+
+        findVerseInRawText(rawText, ref) {
+          // ref format is "BOOK_CODE:chapter:verse", e.g. "GEN:1:1"
+          // rawText line format is "BOOK_CODE|chapter|verse|text"
+          const [bookCode, chapter, verse] = ref.split(':');
+          const regex = new RegExp(`^${bookCode}\\|${chapter}\\|${verse}\\|(.*)$`, 'm');
+          const match = rawText.match(regex);
+          return match ? match[1] : null;
         },
 
         applyHighlight(highlightId) {
@@ -2414,21 +2771,25 @@
           return `${this.selectedVersionId}.dict`;
         },
 
-        // Load dictionary for current version
-        async loadDictionary() {
-          if (!this.hasSN) return;
-          if (Object.keys(this.snDictionary).length > 0) return; // Already loaded
+        // Load dictionary for a specific version (or current version if not specified)
+        // Stores raw text instead of parsing into map - uses regex lookup on demand
+        async loadDictionary(versionId = null) {
+          const targetVersionId = versionId || this.selectedVersionId;
+          const isSNVersion = targetVersionId && targetVersionId.includes('-SN');
+
+          if (!isSNVersion) return;
+          if (this.snDictTexts[targetVersionId]) return; // Already loaded
 
           this.snDictLoading = true;
 
           try {
             // Try to load from cache first
-            const cacheKey = `bible_dict_${this.selectedVersionId}`;
+            const cacheKey = `bible_dict_${targetVersionId}`;
             let dictText = await idbKeyval.get(cacheKey);
 
             if (!dictText) {
               // Fetch from network
-              const dictFile = this.getDictFileName();
+              const dictFile = `${targetVersionId}.dict`;
               const response = await fetch(`./dict/${dictFile}`);
               if (!response.ok) {
                 console.warn(`Dictionary not found: ${dictFile}`);
@@ -2444,20 +2805,9 @@
               }
             }
 
-            // Parse dictionary: CODE,definition format
-            this.snDictionary = {};
-            const lines = dictText.split('\n');
-            for (const line of lines) {
-              if (!line.trim()) continue;
-              const commaIndex = line.indexOf(',');
-              if (commaIndex > 0) {
-                const code = line.substring(0, commaIndex).trim();
-                const definition = line.substring(commaIndex + 1);
-                this.snDictionary[code] = definition;
-              }
-            }
-
-            console.log(`Loaded ${Object.keys(this.snDictionary).length} dictionary entries`);
+            // Store raw text - will use regex to find definitions on demand
+            this.snDictTexts[targetVersionId] = dictText;
+            console.log(`Loaded dictionary text for ${targetVersionId}`);
           } catch (e) {
             console.error('Failed to load dictionary:', e);
           } finally {
@@ -2482,6 +2832,27 @@
           });
         },
 
+        // Render comparison verse text - check if the version has SN codes
+        renderCompareVerseText(text, versionId) {
+          if (!text) return '';
+
+          // Check if this version is a Strong's Number version
+          const isSNVersion = versionId && versionId.includes('-SN');
+
+          if (!isSNVersion) {
+            return this.escapeHtml(text);
+          }
+
+          // Match Strong's Number patterns: <H####> or <G####>
+          const snPattern = /<([HG]\d+)>/g;
+
+          // Replace SN codes with clickable spans
+          // Dictionary language is determined by selected version, not the clicked version
+          return text.replace(snPattern, (match, code) => {
+            return `<span class="sn-code" onclick="Alpine.$data(document.querySelector('[x-data]')).showSNDefinition('${code}')">${code}</span>`;
+          });
+        },
+
         // Escape HTML to prevent XSS
         escapeHtml(text) {
           if (!text) return '';
@@ -2491,24 +2862,35 @@
         },
 
         // Show SN definition modal
+        // Uses dictionary based on current selected version's language (Chinese or English)
         async showSNDefinition(code) {
           this.snModal.show = true;
           this.snModal.code = code;
           this.snModal.definition = '';
           this.snModal.loading = true;
 
+          // Determine dictionary based on selected version's language
+          // Chinese versions start with 'zh', use Chinese SN dictionary
+          // Otherwise use English SN dictionary
+          const isChineseVersion = this.selectedVersionId.startsWith('zh');
+          const dictVersionId = isChineseVersion ? 'zh-rTW_CUV-SN' : 'en_KJV-SN';
+
           // Load dictionary if not loaded
-          if (Object.keys(this.snDictionary).length === 0) {
-            await this.loadDictionary();
+          if (!this.snDictTexts[dictVersionId]) {
+            await this.loadDictionary(dictVersionId);
           }
 
           this.snModal.loading = false;
 
-          // Look up definition
-          const definition = this.snDictionary[code];
-          if (definition) {
-            // Convert \n to <br> for display and escape HTML in the definition
-            this.snModal.definition = this.formatDefinition(definition);
+          // Look up definition using regex on raw text
+          // Dictionary format: CODE,definition (one per line)
+          const dictText = this.snDictTexts[dictVersionId];
+          if (dictText) {
+            const regex = new RegExp(`^${code},(.*)$`, 'm');
+            const match = dictText.match(regex);
+            if (match) {
+              this.snModal.definition = this.formatDefinition(match[1]);
+            }
           }
         },
 
