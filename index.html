@@ -68,14 +68,10 @@
     .verse-highlight { animation: verseHighlight 2s ease-out forwards; border-radius: 0.5rem; background-color: var(--bg-secondary) !important; opacity: 1 !important; }
 
     /* === Components using CSS vars (can't fully convert to Tailwind) === */
-    .section-title { color: var(--accent); font-weight: 700; font-size: 1.1em; padding: 0.5rem 0.75rem; background: linear-gradient(90deg, var(--accent-light), transparent); border-left: 4px solid var(--accent); margin-bottom: 0.75rem; margin-top: 1rem; border-radius: 0 0.5rem 0.5rem 0; }
-    .context-menu { position: fixed; background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); z-index: 100; min-width: 150px; overflow: hidden; }
-    .context-menu-item { padding: 0.75rem 1rem; cursor: pointer; transition: background-color 0.15s; display: flex; align-items: center; gap: 0.5rem; }
-    .context-menu-item:hover { background-color: var(--bg-secondary); }
+    .section-title { color: var(--accent); font-weight: 700; font-size: 1.1em; padding: 0.25rem 0; margin-bottom: 0.5rem; margin-top: 0.7rem; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal-content { background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 400px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
     .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; }
-    .verse-container:active { background-color: var(--bg-primary); border-radius: 0.5rem; }
 
     /* === Dynamic content styles (used in x-html, can't use Tailwind) === */
     .sn-code { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; transition: color 0.2s; margin: 0 0.15em; }
@@ -111,7 +107,7 @@
         class="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-primary transition-colors">
         <span class="font-semibold text-accent" x-text="selectedBookName"></span>
         <span class="text-primary" x-text="selectedChapter + ' 章'"></span>
-        <span class="text-secondary text-xs ml-1">▼</span>
+        <span class="text-secondary text-sm ml-1">▼</span>
       </button>
 
       <!-- Right: Settings -->
@@ -137,7 +133,7 @@
     </div>
 
     <!-- Verses Display -->
-    <div class="bg-secondary rounded-xl p-3 sm:p-6 border border-custom min-h-[400px]">
+    <div class="py-2 min-h-[400px]">
       <!-- Search Results -->
       <template x-if="searchQuery && searchResults.length > 0">
         <div>
@@ -170,41 +166,24 @@
 
       <!-- Chapter Verses -->
       <template x-if="!searchQuery">
-        <div>
-          <div :style="`display: flex; flex-direction: column; gap: ${verseSpacing}px;`">
-            <template x-for="(verse, index) in currentVerses" :key="'verse-' + index">
-              <div>
-                <!-- Section Title (displayed before the verse) -->
-                <div x-show="customTitles[verse.ref]" class="section-title" x-text="customTitles[verse.ref]"></div>
-                <!-- Verse Container -->
-                <div class="verse-item verse-container px-2 -mx-2 rounded-lg"
-                  :data-verse-num="verse.verseNum"
-                  :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}px; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}40; border-left: 3px solid ${getHighlightColor(verse.ref)}; padding-left: 0.75rem;` : '')"
-                  @mousedown="startLongPress($event, verse)"
-                  @mouseup="cancelLongPress()" @mouseleave="cancelLongPress()"
-                  @touchstart.passive="startLongPress($event, verse)" @touchend="cancelLongPress()"
-                  @touchmove="cancelLongPress()" @contextmenu.prevent="showContextMenu($event, verse)">
-                  <!-- Highlight Label -->
-                  <div x-show="verseHighlights[verse.ref] && highlightDefs[verseHighlights[verse.ref]]"
-                    class="text-xs font-medium mb-1 opacity-70"
-                    :style="`color: ${getHighlightColor(verse.ref)}`"
-                    x-text="highlightDefs[verseHighlights[verse.ref]]?.name"></div>
-                  <!-- Verse Content -->
-                  <div class="flex items-start gap-2">
-                    <div class="flex-1">
-                      <span class="text-accent font-semibold mr-2" x-text="verse.verseNum"></span>
-                      <span x-html="renderVerseText(verse.text)"></span>
-                    </div>
-                    <!-- Note Icon -->
-                    <button x-show="notes[verse.ref]" @click.stop="openNoteModal(verse)"
-                      class="flex-shrink-0 p-1 rounded hover:bg-primary transition-all text-base opacity-70 hover:opacity-100 hover:scale-110" title="查看筆記">
-                      ✏️
-                    </button>
-                  </div>
-                </div>
+        <div :style="`display: flex; flex-direction: column; gap: ${verseSpacing}px;`">
+          <template x-for="(verse, index) in currentVerses" :key="'verse-' + index">
+            <div>
+              <!-- Section Title (displayed before the verse) -->
+              <div x-show="customTitles[verse.ref]" class="section-title" x-text="customTitles[verse.ref]"></div>
+              <!-- Verse Container -->
+              <div class="verse-item verse-container"
+                :data-verse-num="verse.verseNum"
+                :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}30;` : '')"
+                @click="showVerseActions(verse)"
+                @contextmenu.prevent="showVerseActions(verse)">
+                <sup class="text-accent font-medium opacity-70" style="font-size: 0.75em; margin-right: 0em;" x-text="verse.verseNum"></sup>
+                <span x-html="renderVerseText(verse.text)"></span>
+                <button x-show="notes[verse.ref]" @click.stop="openNoteModal(verse)"
+                  class="inline-flex ml-1 opacity-70 hover:opacity-100" title="查看筆記">✏️</button>
               </div>
-            </template>
-          </div>
+            </div>
+          </template>
 
           <!-- Chapter Navigation (at end of verses) -->
           <div x-show="currentVerses.length > 0" class="flex justify-between items-center mt-8 pt-6 border-t border-custom">
@@ -242,29 +221,55 @@
       </template>
     </div>
 
-    <!-- Footer Info -->
-    <div class="mt-6 text-center text-secondary text-sm">
-      <p>共 <span x-text="totalVerses"></span> 節經文</p>
-    </div>
   </main>
 
-  <!-- Context Menu -->
-  <div x-cloak x-show="contextMenu.show" x-transition:enter="transition ease-out duration-100"
-    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-    x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100"
-    x-transition:leave-end="opacity-0 scale-95" class="context-menu"
-    :style="'top: ' + contextMenu.y + 'px; left: ' + contextMenu.x + 'px;'" @click.outside="closeContextMenu()">
-    <div class="context-menu-item text-primary" @click="openTitleModal()">
-      <span>🏷️</span>
-      <span>自訂標題</span>
-    </div>
-    <div class="context-menu-item text-primary" @click="openNoteModal()">
-      <span>📝</span>
-      <span>筆記</span>
-    </div>
-    <div class="context-menu-item text-primary" @click="openHighlightModal()">
-      <span>🎨</span>
-      <span>標註</span>
+  <!-- Verse Actions Widget Backdrop -->
+  <div x-cloak x-show="verseActions.show"
+    @click="hideVerseActions()"
+    class="fixed inset-0 z-[149]"></div>
+
+  <!-- Verse Actions Widget -->
+  <div x-cloak x-show="verseActions.show"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 translate-y-4"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100 translate-y-0"
+    x-transition:leave-end="opacity-0 translate-y-4"
+    class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[150] pointer-events-none w-[90%] max-w-[320px]">
+    <div class="pointer-events-auto bg-black/85 backdrop-blur-md text-white rounded-2xl shadow-2xl overflow-hidden"
+      @click.stop>
+
+      <!-- Verse Reference Header -->
+      <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+        <span class="font-medium" x-text="verseActions.verse ? formatRef(verseActions.verse.ref) : ''"></span>
+        <!-- Highlight indicator -->
+        <div x-show="verseActions.verse && verseHighlights[verseActions.verse.ref] && highlightDefs[verseHighlights[verseActions.verse.ref]]"
+          class="flex items-center gap-2 text-sm"
+          :style="verseActions.verse ? `color: ${getHighlightColor(verseActions.verse.ref)}` : ''">
+          <span class="w-2 h-2 rounded-full" :style="verseActions.verse ? `background-color: ${getHighlightColor(verseActions.verse.ref)}` : ''"></span>
+          <span x-text="verseActions.verse && highlightDefs[verseHighlights[verseActions.verse.ref]]?.name"></span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex">
+        <button @click="openTitleModal()"
+          class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
+          <span class="text-xl">🏷️</span>
+          <span class="text-s">標題</span>
+        </button>
+        <button @click="openNoteModal()"
+          class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
+          <span class="text-xl">📝</span>
+          <span class="text-s">筆記</span>
+        </button>
+        <button @click="openHighlightModal()"
+          class="flex-1 py-4 flex flex-col items-center gap-1 hover:bg-white/10 transition-colors active:scale-95">
+          <span class="text-xl">🎨</span>
+          <span class="text-s">標註</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -279,7 +284,7 @@
       <p class="text-secondary text-sm mb-4" x-text="titleModal.verse ? formatRef(titleModal.verse.ref) : ''"></p>
       <input type="text" x-model="titleModal.title" x-ref="titleInput" @keydown.enter="saveTitle()"
         @keydown.escape="closeTitleModal()" placeholder="輸入標題..."
-        :style="`font-size: ${fontSize}px; font-family: ${currentFontFamily};`"
+        :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily};`"
         class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 mb-4">
       <div class="flex justify-end gap-3">
         <button @click="closeTitleModal()"
@@ -305,7 +310,7 @@
       <p class="text-secondary text-sm mb-4" x-text="noteModal.verse ? formatRef(noteModal.verse.ref) : ''"></p>
       <textarea x-model="noteModal.note" x-ref="noteInput" @keydown.escape="closeNoteModal()" placeholder="輸入筆記..."
         rows="5"
-        :style="`font-size: ${fontSize}px; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
+        :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
         class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 mb-4 resize-none"></textarea>
       <div class="flex justify-end gap-3">
         <button @click="closeNoteModal()"
@@ -416,6 +421,11 @@
     </div>
   </div>
 
+  <!-- Reading Adjustment Overlay Backdrop (click to dismiss) -->
+  <div x-cloak x-show="readingOverlay.show"
+    @click="hideReadingOverlay()"
+    class="fixed inset-0 z-[149]"></div>
+
   <!-- Reading Adjustment Overlay -->
   <div x-cloak x-show="readingOverlay.show"
     x-transition:enter="transition ease-out duration-200"
@@ -426,28 +436,28 @@
     x-transition:leave-end="opacity-0 translate-y-4"
     class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[150] pointer-events-none w-[90%] max-w-[320px]">
     <div class="pointer-events-auto bg-black/85 backdrop-blur-md text-white rounded-2xl shadow-2xl overflow-hidden"
-      @click="resetOverlayTimeout()">
+      @click.stop>
 
       <!-- Tab Selector -->
       <div class="flex border-b border-white/10">
         <button @click="switchOverlayTab(0)"
           :class="readingOverlay.activeTab === 0 ? 'bg-white/10 text-white' : 'text-white/50'"
-          class="flex-1 py-2.5 text-center text-xs font-medium transition-colors">
+          class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
           <span class="block text-base mb-0.5">A</span>字號
         </button>
         <button @click="switchOverlayTab(1)"
           :class="readingOverlay.activeTab === 1 ? 'bg-white/10 text-white' : 'text-white/50'"
-          class="flex-1 py-2.5 text-center text-xs font-medium transition-colors">
+          class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
           <span class="block text-base mb-0.5">≡</span>行距
         </button>
         <button @click="switchOverlayTab(2)"
           :class="readingOverlay.activeTab === 2 ? 'bg-white/10 text-white' : 'text-white/50'"
-          class="flex-1 py-2.5 text-center text-xs font-medium transition-colors">
+          class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
           <span class="block text-base mb-0.5">¶</span>段距
         </button>
         <button @click="switchOverlayTab(3)"
           :class="readingOverlay.activeTab === 3 ? 'bg-white/10 text-white' : 'text-white/50'"
-          class="flex-1 py-2.5 text-center text-xs font-medium transition-colors">
+          class="flex-1 py-2.5 text-center text-sm font-medium transition-colors">
           <span class="block text-base mb-0.5">字</span>字型
         </button>
       </div>
@@ -456,14 +466,14 @@
       <div class="px-5 py-4">
         <!-- Font Size Control -->
         <div x-show="readingOverlay.activeTab === 0" class="flex items-center gap-4">
-          <button @click="adjustFontSize(-2)"
+          <button @click="adjustFontSize(-0.05)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
             <span class="text-sm font-medium">A</span>
           </button>
           <div class="flex-1 text-center">
-            <div class="text-2xl font-bold" x-text="fontSize + 'px'"></div>
+            <div class="text-2xl font-bold" x-text="fontSize.toFixed(2) + ' rem'"></div>
           </div>
-          <button @click="adjustFontSize(2)"
+          <button @click="adjustFontSize(0.05)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
             <span class="text-xl font-medium">A</span>
           </button>
@@ -471,14 +481,14 @@
 
         <!-- Line Height Control -->
         <div x-show="readingOverlay.activeTab === 1" class="flex items-center gap-4">
-          <button @click="adjustLineHeight(-0.2)"
+          <button @click="adjustLineHeight(-0.1)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
             <span class="text-lg leading-none">≡</span>
           </button>
           <div class="flex-1 text-center">
             <div class="text-2xl font-bold" x-text="lineHeight.toFixed(1)"></div>
           </div>
-          <button @click="adjustLineHeight(0.2)"
+          <button @click="adjustLineHeight(0.1)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95"
             style="letter-spacing: 3px;">
             <span class="text-lg leading-none">≡</span>
@@ -487,14 +497,14 @@
 
         <!-- Verse Spacing Control -->
         <div x-show="readingOverlay.activeTab === 2" class="flex items-center gap-4">
-          <button @click="adjustVerseSpacing(-4)"
+          <button @click="adjustVerseSpacing(-2)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
             <span class="text-lg">−</span>
           </button>
           <div class="flex-1 text-center">
             <div class="text-2xl font-bold" x-text="verseSpacing + 'px'"></div>
           </div>
-          <button @click="adjustVerseSpacing(4)"
+          <button @click="adjustVerseSpacing(2)"
             class="w-11 h-11 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors active:scale-95">
             <span class="text-lg">+</span>
           </button>
@@ -515,14 +525,29 @@
           </button>
         </div>
 
-        <!-- Progress bar (hidden for font family tab) -->
-        <div x-show="readingOverlay.activeTab !== 3" class="mt-4 h-1.5 bg-white/15 rounded-full overflow-hidden">
-          <div class="h-full bg-white/70 rounded-full transition-all duration-200"
-            :style="readingOverlay.activeTab === 0
-              ? `width: ${((fontSize - 12) / 20) * 100}%`
-              : readingOverlay.activeTab === 1
-                ? `width: ${((lineHeight - 1.2) / 1.8) * 100}%`
-                : `width: ${(verseSpacing / 48) * 100}%`">
+        <!-- Draggable Progress bar (hidden for font family tab) -->
+        <div x-show="readingOverlay.activeTab !== 3"
+          class="mt-4 h-6 flex items-center cursor-pointer touch-none"
+          @mousedown="startSliderDrag($event)"
+          @touchstart.prevent="startSliderDrag($event)">
+          <div class="w-full h-2 bg-white/15 rounded-full overflow-hidden relative">
+            <div class="h-full bg-white/70 rounded-full transition-all"
+              :class="readingOverlay.isDragging ? 'duration-0' : 'duration-200'"
+              :style="readingOverlay.activeTab === 0
+                ? `width: ${((fontSize - 0.75) / 1.5) * 100}%`
+                : readingOverlay.activeTab === 1
+                  ? `width: ${((lineHeight - 1.0) / 2.0) * 100}%`
+                  : `width: ${(verseSpacing / 64) * 100}%`">
+            </div>
+            <!-- Slider handle -->
+            <div class="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-md transition-all"
+              :class="readingOverlay.isDragging ? 'scale-125 duration-0' : 'duration-200'"
+              :style="readingOverlay.activeTab === 0
+                ? `left: calc(${((fontSize - 0.75) / 1.5) * 100}% - 8px)`
+                : readingOverlay.activeTab === 1
+                  ? `left: calc(${((lineHeight - 1.0) / 2.0) * 100}% - 8px)`
+                  : `left: calc(${(verseSpacing / 64) * 100}% - 8px)`">
+            </div>
           </div>
         </div>
         <!-- Font family indicator dots -->
@@ -570,7 +595,7 @@
             <span class="text-lg">📐</span>
             <span class="text-primary">調整顯示</span>
           </div>
-          <div class="text-secondary text-xs">
+          <div class="text-secondary text-sm">
             <span x-text="currentFontFamilyName"></span>
           </div>
         </button>
@@ -586,7 +611,7 @@
             <span class="text-lg">📖</span>
             <span class="text-primary" x-text="currentVersion.name"></span>
           </div>
-          <span class="text-secondary text-xs">切換 ▶</span>
+          <span class="text-secondary text-sm">切換 ▶</span>
         </button>
       </div>
 
@@ -595,33 +620,26 @@
         <h4 class="font-medium text-primary">📂 資料備份</h4>
 
         <!-- Buttons row (when File System API supported) -->
-        <div x-show="hasFileSystemAccess" class="grid grid-cols-4 gap-2">
+        <div x-show="hasFileSystemAccess" class="grid grid-cols-3 gap-2">
           <!-- Save Button -->
           <button @click="saveToFile()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
             <span>💾</span>
-            <span class="text-xs">儲存</span>
-          </button>
-
-          <!-- Save As Button -->
-          <button @click="saveAsNewFile()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
-            <span>📄</span>
-            <span class="text-xs">另存新檔</span>
+            <span class="text-sm">儲存</span>
           </button>
 
           <!-- Download Backup Button -->
           <button @click="downloadBackup()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
             <span>⬇️</span>
-            <span class="text-xs">建立備份</span>
+            <span class="text-sm">建立備份</span>
           </button>
 
           <!-- Open File Button -->
           <button @click="importData()" :disabled="settingsModal.isBusy"
-            class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
+            class="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg border border-custom hover:bg-primary transition-colors disabled:opacity-50">
             <span>📂</span>
-            <span class="text-xs">開啟檔案</span>
+            <span class="text-sm">開啟檔案</span>
           </button>
         </div>
 
@@ -653,6 +671,11 @@
               <p class="text-sm text-secondary" x-text="fileHandle ? '已選擇：' + fileHandle.name : (hasFileSystemAccess ? '尚未選擇檔案' : '瀏覽器不支援檔案系統 API')"></p>
             </div>
           </label>
+          <!-- Re-select file button -->
+          <button x-show="hasFileSystemAccess && fileHandle" @click="reselectFile()" :disabled="settingsModal.isBusy"
+            class="mt-2 w-full text-sm text-accent hover:underline disabled:opacity-50">
+            重新選擇檔案
+          </button>
         </div>
       </div>
 
@@ -817,10 +840,10 @@
                     <div class="flex-1">
                       <div class="flex items-center gap-2">
                         <span class="font-medium text-primary" x-text="version.name"></span>
-                        <span x-show="selectedVersionId === version.id" class="text-xs px-1.5 py-0.5 rounded bg-amber-600 text-white">使用中</span>
-                        <span x-show="isVersionCached(version.id) && selectedVersionId !== version.id" class="text-xs px-1.5 py-0.5 rounded bg-green-600 text-white">已下載</span>
+                        <span x-show="selectedVersionId === version.id" class="text-sm px-1.5 py-0.5 rounded bg-amber-600 text-white">使用中</span>
+                        <span x-show="isVersionCached(version.id) && selectedVersionId !== version.id" class="text-sm px-1.5 py-0.5 rounded bg-green-600 text-white">已下載</span>
                       </div>
-                      <p class="text-xs text-secondary mt-0.5" x-text="version.size"></p>
+                      <p class="text-sm text-secondary mt-0.5" x-text="version.size"></p>
                     </div>
                     <div class="flex items-center gap-2">
                       <!-- Delete button for cached versions (not currently selected) -->
@@ -853,7 +876,7 @@
       </div>
 
       <div class="mt-4 pt-4 border-t border-custom">
-        <p class="text-xs text-secondary text-center">已快取 <span x-text="cachedVersions.length"></span> 個譯本</p>
+        <p class="text-sm text-secondary text-center">已快取 <span x-text="cachedVersions.length"></span> 個譯本</p>
       </div>
     </div>
   </div>
@@ -996,8 +1019,6 @@
           'h3': { name: '應用', color: '#fecaca' }
         },
         verseHighlights: {},  // { [verseRef]: highlightId }
-        longPressTimer: null,
-        longPressDuration: 500,
         isLoading: false,
         loadingMessage: '',
         loadingSubMessage: '',
@@ -1016,10 +1037,8 @@
           category: 'pentateuch',  // category filter
           chapterRange: 0  // chapter range filter index (0 = first range)
         },
-        contextMenu: {
+        verseActions: {
           show: false,
-          x: 0,
-          y: 0,
           verse: null
         },
         titleModal: {
@@ -1057,7 +1076,7 @@
         fileHandle: null,
         autoSync: false,
         // Reading preferences
-        fontSize: 18,      // in pixels
+        fontSize: 1.125,   // in rem (default ~18px at 16px base)
         lineHeight: 1.8,   // multiplier
         verseSpacing: 16,  // in pixels (gap between verses)
         fontFamily: 0,     // index into fontFamilies array
@@ -1086,7 +1105,8 @@
         readingOverlay: {
           show: false,
           activeTab: 0,  // 0: fontSize, 1: lineHeight, 2: verseSpacing, 3: fontFamily
-          hideTimeout: null
+          isDragging: false,
+          sliderRect: null
         },
 
         async init() {
@@ -1158,13 +1178,20 @@
             }
 
             // Restore reading preferences
-            if (savedFontSize && savedFontSize >= 12 && savedFontSize <= 32) {
-              this.fontSize = savedFontSize;
+            if (savedFontSize) {
+              // Migrate old px values to rem (old values were 12-36, new are 0.75-2.25)
+              if (savedFontSize >= 10) {
+                // Old px value, convert to rem (assuming 16px base)
+                this.fontSize = Math.max(0.75, Math.min(2.25, savedFontSize / 16));
+              } else if (savedFontSize >= 0.75 && savedFontSize <= 2.25) {
+                // Already in rem
+                this.fontSize = savedFontSize;
+              }
             }
-            if (savedLineHeight && savedLineHeight >= 1.2 && savedLineHeight <= 3) {
+            if (savedLineHeight && savedLineHeight >= 1.0 && savedLineHeight <= 3) {
               this.lineHeight = savedLineHeight;
             }
-            if (savedVerseSpacing && savedVerseSpacing >= 0 && savedVerseSpacing <= 48) {
+            if (savedVerseSpacing && savedVerseSpacing >= 0 && savedVerseSpacing <= 64) {
               this.verseSpacing = savedVerseSpacing;
             }
             if (savedFontFamily !== undefined && savedFontFamily >= 0 && savedFontFamily < this.fontFamilies.length) {
@@ -1262,53 +1289,78 @@
         showReadingOverlay() {
           this.readingOverlay.show = true;
           this.settingsModal.show = false;
-          this.resetOverlayTimeout();
-        },
-
-        resetOverlayTimeout() {
-          if (this.readingOverlay.hideTimeout) {
-            clearTimeout(this.readingOverlay.hideTimeout);
-          }
-          this.readingOverlay.hideTimeout = setTimeout(() => {
-            this.readingOverlay.show = false;
-          }, 3000);
         },
 
         hideReadingOverlay() {
-          if (this.readingOverlay.hideTimeout) {
-            clearTimeout(this.readingOverlay.hideTimeout);
-          }
           this.readingOverlay.show = false;
         },
 
         switchOverlayTab(tab) {
           this.readingOverlay.activeTab = tab;
-          this.resetOverlayTimeout();
         },
 
         adjustFontSize(delta) {
-          this.fontSize = Math.max(12, Math.min(32, parseInt(this.fontSize) + delta));
+          // delta is in 0.05rem increments
+          this.fontSize = Math.max(0.75, Math.min(2.25, Math.round((parseFloat(this.fontSize) + delta) * 100) / 100));
           this.saveReadingPreferences();
-          this.resetOverlayTimeout();
         },
 
         adjustLineHeight(delta) {
-          this.lineHeight = Math.max(1.2, Math.min(3, Math.round((parseFloat(this.lineHeight) + delta) * 10) / 10));
+          this.lineHeight = Math.max(1.0, Math.min(3.0, Math.round((parseFloat(this.lineHeight) + delta) * 10) / 10));
           this.saveReadingPreferences();
-          this.resetOverlayTimeout();
         },
 
         adjustVerseSpacing(delta) {
-          this.verseSpacing = Math.max(0, Math.min(48, parseInt(this.verseSpacing) + delta));
+          this.verseSpacing = Math.max(0, Math.min(64, parseInt(this.verseSpacing) + delta));
           this.saveReadingPreferences();
-          this.resetOverlayTimeout();
         },
 
         adjustFontFamily(delta) {
           const len = this.fontFamilies.length;
           this.fontFamily = ((this.fontFamily + delta) % len + len) % len;
           this.saveReadingPreferences();
-          this.resetOverlayTimeout();
+        },
+
+        // Slider drag functionality
+        startSliderDrag(event) {
+          this.readingOverlay.isDragging = true;
+          const sliderEl = event.currentTarget.querySelector('.bg-white\\/15');
+          this.readingOverlay.sliderRect = sliderEl.getBoundingClientRect();
+          this.handleSliderMove(event);
+
+          const moveHandler = (e) => this.handleSliderMove(e);
+          const endHandler = () => {
+            this.readingOverlay.isDragging = false;
+            this.saveReadingPreferences();
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', endHandler);
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('touchend', endHandler);
+          };
+
+          document.addEventListener('mousemove', moveHandler);
+          document.addEventListener('mouseup', endHandler);
+          document.addEventListener('touchmove', moveHandler, { passive: false });
+          document.addEventListener('touchend', endHandler);
+        },
+
+        handleSliderMove(event) {
+          if (!this.readingOverlay.sliderRect) return;
+          const rect = this.readingOverlay.sliderRect;
+          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          let ratio = (clientX - rect.left) / rect.width;
+          ratio = Math.max(0, Math.min(1, ratio));
+
+          if (this.readingOverlay.activeTab === 0) {
+            // Font size: 0.75-2.25rem (30 steps of 0.05rem)
+            this.fontSize = Math.round((0.75 + ratio * 1.5) * 20) / 20;
+          } else if (this.readingOverlay.activeTab === 1) {
+            // Line height: 1.0-3.0 (20 steps of 0.1)
+            this.lineHeight = Math.round((1.0 + ratio * 2.0) * 10) / 10;
+          } else if (this.readingOverlay.activeTab === 2) {
+            // Verse spacing: 0-64px (16 steps of 4)
+            this.verseSpacing = Math.round(ratio * 16) * 4;
+          }
         },
 
         get currentFontFamily() {
@@ -1784,68 +1836,27 @@
           document.documentElement.classList.toggle('dark', this.isDark);
         },
 
-        // Long press handling
-        startLongPress(event, verse) {
-          this.cancelLongPress();
-          this.longPressTimer = setTimeout(() => {
-            this.showContextMenu(event, verse);
-          }, this.longPressDuration);
-        },
-
-        cancelLongPress() {
-          if (this.longPressTimer) {
-            clearTimeout(this.longPressTimer);
-            this.longPressTimer = null;
-          }
-        },
-
-        // Context menu
-        showContextMenu(event, verse) {
-          this.cancelLongPress();
-
-          let x, y;
-          if (event.touches && event.touches.length > 0) {
-            x = event.touches[0].clientX;
-            y = event.touches[0].clientY;
-          } else if (event.changedTouches && event.changedTouches.length > 0) {
-            x = event.changedTouches[0].clientX;
-            y = event.changedTouches[0].clientY;
-          } else {
-            x = event.clientX;
-            y = event.clientY;
-          }
-
-          // Adjust position to stay within viewport
-          const menuWidth = 160;
-          const menuHeight = 100;
-          if (x + menuWidth > window.innerWidth) {
-            x = window.innerWidth - menuWidth - 10;
-          }
-          if (y + menuHeight > window.innerHeight) {
-            y = window.innerHeight - menuHeight - 10;
-          }
-
-          this.contextMenu = {
+        // Verse actions widget
+        showVerseActions(verse) {
+          this.verseActions = {
             show: true,
-            x: Math.max(10, x),
-            y: Math.max(10, y),
             verse: verse
           };
         },
 
-        closeContextMenu() {
-          this.contextMenu.show = false;
+        hideVerseActions() {
+          this.verseActions.show = false;
         },
 
         // Title modal
         openTitleModal() {
-          const verse = this.contextMenu.verse;
+          const verse = this.verseActions.verse;
           this.titleModal = {
             show: true,
             verse: verse,
             title: this.customTitles[verse.ref] || ''
           };
-          this.closeContextMenu();
+          this.hideVerseActions();
 
           // Focus input after modal opens
           this.$nextTick(() => {
@@ -1873,13 +1884,13 @@
 
         // Note modal
         openNoteModal(verse) {
-          if (!verse) verse = this.contextMenu.verse;
+          if (!verse) verse = this.verseActions.verse;
           this.noteModal = {
             show: true,
             verse: verse,
             note: this.notes[verse.ref] || ''
           };
-          this.closeContextMenu();
+          this.hideVerseActions();
 
           this.$nextTick(() => {
             if (this.$refs.noteInput) {
@@ -1906,8 +1917,9 @@
 
         // Highlight methods
         openHighlightModal(verse) {
-          const v = verse || this.contextMenu.verse;
+          const v = verse || this.verseActions.verse;
           if (!v) return;
+          this.hideVerseActions();
           this.highlightModal = {
             show: true,
             verse: v,
@@ -1915,7 +1927,6 @@
             editName: '',
             editColor: ''
           };
-          this.contextMenu.show = false;
         },
 
         closeHighlightModal() {
@@ -2043,6 +2054,36 @@
             selectedBook: this.selectedBook,
             selectedChapter: this.selectedChapter
           };
+        },
+
+        // Re-select file for auto-save
+        async reselectFile() {
+          this.settingsModal.isBusy = true;
+          this.settingsModal.message = '';
+
+          try {
+            // Prompt user to select a new file
+            this.fileHandle = await window.showSaveFilePicker({
+              suggestedName: 'bible-backup.json',
+              types: [{
+                description: 'JSON Files',
+                accept: { 'application/json': ['.json'] }
+              }]
+            });
+            await this.saveFileHandle();
+            this.settingsModal.message = `已選擇：${this.fileHandle.name}`;
+            this.settingsModal.isError = false;
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              this.settingsModal.message = '';
+            } else {
+              console.error('File selection failed:', e);
+              this.settingsModal.message = '選擇檔案失敗：' + e.message;
+              this.settingsModal.isError = true;
+            }
+          } finally {
+            this.settingsModal.isBusy = false;
+          }
         },
 
         // Save to currently selected file (requires file handle)
