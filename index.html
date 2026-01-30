@@ -91,7 +91,11 @@
 
 <body class="min-h-screen" x-data="bibleReader()">
 
-  <div id="app" :style="`zoom: ${zoom / 100};`">
+  <div id="app" :style="`zoom: ${zoom / 100};`"
+    @touchstart="handlePinchStart($event)"
+    @touchmove="handlePinchMove($event)"
+    @touchend="handlePinchEnd($event)"
+    @touchcancel="handlePinchEnd($event)">
       <!-- Header -->
   <header class="bg-primary sticky top-0 z-50">
     <!-- Top Row: Navigation & Controls -->
@@ -1467,9 +1471,15 @@
         // Reading overlay control
         readingOverlay: {
           show: false,
-          activeTab: 0,  // 0: fontSize, 1: lineHeight, 2: verseSpacing, 3: fontFamily
+          activeTab: 0,  // 0: fontSize, 1: lineHeight, 2: verseSpacing, 3: fontFamily, 4: zoom
           isDragging: false,
           sliderRect: null
+        },
+        // Pinch zoom state
+        pinchState: {
+          active: false,
+          initialDistance: 0,
+          initialZoom: 100
         },
 
         async init() {
@@ -1695,6 +1705,54 @@
         adjustZoom(delta) {
           this.zoom = Math.max(50, Math.min(150, parseInt(this.zoom) + delta));
           this.saveReadingPreferences();
+        },
+
+        // Pinch-to-zoom functionality
+        handlePinchStart(event) {
+          if (event.touches.length !== 2) return;
+
+          const touch1 = event.touches[0];
+          const touch2 = event.touches[1];
+          const distance = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+          );
+
+          this.pinchState.active = true;
+          this.pinchState.initialDistance = distance;
+          this.pinchState.initialZoom = this.zoom;
+
+          // Show reading overlay with zoom tab
+          this.readingOverlay.activeTab = 4;
+          this.readingOverlay.show = true;
+        },
+
+        handlePinchMove(event) {
+          if (!this.pinchState.active || event.touches.length !== 2) return;
+
+          const touch1 = event.touches[0];
+          const touch2 = event.touches[1];
+          const distance = Math.hypot(
+            touch2.clientX - touch1.clientX,
+            touch2.clientY - touch1.clientY
+          );
+
+          // Calculate zoom based on pinch scale
+          const scale = distance / this.pinchState.initialDistance;
+          const newZoom = Math.round(this.pinchState.initialZoom * scale);
+
+          // Clamp to valid range
+          this.zoom = Math.max(50, Math.min(150, newZoom));
+        },
+
+        handlePinchEnd(event) {
+          if (!this.pinchState.active) return;
+
+          // If no touches left or only one touch, end pinch
+          if (event.touches.length < 2) {
+            this.pinchState.active = false;
+            this.saveReadingPreferences();
+          }
         },
 
         // Slider drag functionality
