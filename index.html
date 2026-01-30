@@ -2364,7 +2364,6 @@
         openTitleModal() {
           const verse = this.verseActions.verse;
           this.openTitleModalForVerse(verse);
-          this.hideVerseActions();
         },
 
         openTitleModalForVerse(verse) {
@@ -2399,7 +2398,6 @@
             editName: '',
             editColor: ''
           };
-          this.hideVerseActions();
           this.$nextTick(() => {
             if (this.$refs.noteInput) {
               this.$refs.noteInput.focus();
@@ -2410,7 +2408,6 @@
         openHighlightModal(verse) {
           const v = verse || this.verseActions.verse;
           if (!v) return;
-          this.hideVerseActions();
           this.verseModal = {
             show: true,
             type: 'highlight',
@@ -2466,14 +2463,12 @@
           if (this.compareVerseRef === verse.ref) {
             this.compareVerseRef = null;
             this.compareVerses = [];
-            this.hideVerseActions();
             return;
           }
 
           // Load comparison from enabled versions in user-configured order
           this.compareVerseRef = verse.ref;
           this.compareVerses = [];
-          this.hideVerseActions();
 
           // Use user's compare order, falling back to all cached versions (excluding current) if empty
           let versionsToCompare = this.compareVersionOrder.filter(id =>
