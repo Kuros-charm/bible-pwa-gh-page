@@ -7,6 +7,7 @@
   <title>bible-pwa</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <!-- <script src="src/bible.js"></script> -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
@@ -213,7 +214,7 @@
       <template x-if="searchQuery && searchResults.length === 0">
         <div class="flex flex-col items-center justify-center py-16 text-secondary">
           <span class="text-4xl mb-4">📭</span>
-          <p>找不到符合的經文</p>
+          <p>找不到符合經文</p>
         </div>
       </template>
 
@@ -2789,6 +2790,11 @@
             const data = this.getExportData();
             const jsonString = JSON.stringify(data, null, 2);
 
+            // Create ZIP file with JSON at root level
+            const zip = new JSZip();
+            zip.file('data.json', jsonString);
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+
             if (!this.fileHandle) {
               // No file selected, act like saveAsNewFile
               await this.saveAsNewFile();
@@ -2807,7 +2813,7 @@
 
             // Write to the file
             const writable = await this.fileHandle.createWritable();
-            await writable.write(jsonString);
+            await writable.write(zipBlob);
             await writable.close();
 
             this.settingsModal.message = `已儲存至 ${this.fileHandle.name}`;
@@ -2834,13 +2840,18 @@
             const data = this.getExportData();
             const jsonString = JSON.stringify(data, null, 2);
 
+            // Create ZIP file with JSON at root level
+            const zip = new JSZip();
+            zip.file('data.json', jsonString);
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+
             if (this.hasFileSystemAccess) {
               // Use File System Access API - always prompt for new file
               this.fileHandle = await window.showSaveFilePicker({
-                suggestedName: 'bible-backup.json',
+                suggestedName: 'bible-backup.zip',
                 types: [{
-                  description: 'JSON Files',
-                  accept: { 'application/json': ['.json'] }
+                  description: 'ZIP Files',
+                  accept: { 'application/zip': ['.zip'] }
                 }]
               });
               // Save the new file handle to IndexedDB
@@ -2848,24 +2859,23 @@
 
               // Write to the file
               const writable = await this.fileHandle.createWritable();
-              await writable.write(jsonString);
+              await writable.write(zipBlob);
               await writable.close();
 
               this.settingsModal.message = `已儲存至 ${this.fileHandle.name}`;
               this.settingsModal.isError = false;
             } else {
               // Fallback to download
-              const blob = new Blob([jsonString], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
+              const url = URL.createObjectURL(zipBlob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `bible-backup-${new Date().toISOString().slice(0, 10)}.json`;
+              a.download = `bible-backup-${new Date().toISOString().slice(0, 10)}.zip`;
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
 
-              this.settingsModal.message = '備份檔案已���載';
+              this.settingsModal.message = '備份檔案已下載';
               this.settingsModal.isError = false;
             }
           } catch (e) {
@@ -2881,7 +2891,7 @@
           }
         },
 
-        // Download backup as JSON file (always downloads, regardless of File System API)
+        // Download backup as ZIP file (always downloads, regardless of File System API)
         async downloadBackup() {
           this.settingsModal.isBusy = true;
           this.settingsModal.message = '';
@@ -2889,11 +2899,16 @@
           try {
             const data = this.getExportData();
             const jsonString = JSON.stringify(data, null, 2);
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
+
+            // Create ZIP file with JSON at root level
+            const zip = new JSZip();
+            zip.file('data.json', jsonString);
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+            const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bible-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `bible-backup-${new Date().toISOString().slice(0, 10)}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2915,34 +2930,33 @@
           this.settingsModal.message = '';
 
           try {
-            let fileContent;
+            let file;
 
             if (this.hasFileSystemAccess) {
               // Use File System Access API
               const [handle] = await window.showOpenFilePicker({
                 types: [{
-                  description: 'JSON Files',
-                  accept: { 'application/json': ['.json'] }
+                  description: 'ZIP Files',
+                  accept: { 'application/zip': ['.zip'] }
                 }],
                 multiple: false
               });
 
-              const file = await handle.getFile();
-              fileContent = await file.text();
+              file = await handle.getFile();
 
               // Store the handle for future use and persist to IndexedDB
               this.fileHandle = handle;
               await this.saveFileHandle();
             } else {
               // Fallback to file input
-              fileContent = await new Promise((resolve, reject) => {
+              file = await new Promise((resolve, reject) => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.json,application/json';
+                input.accept = '.zip,application/zip';
                 input.onchange = async (e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    resolve(await file.text());
+                  const f = e.target.files[0];
+                  if (f) {
+                    resolve(f);
                   } else {
                     reject(new Error('No file selected'));
                   }
@@ -2951,6 +2965,13 @@
               });
             }
 
+            // Read and extract ZIP file
+            const zip = await JSZip.loadAsync(file);
+            const dataFile = zip.file('data.json');
+            if (!dataFile) {
+              throw new Error('ZIP 檔案中找不到 data.json');
+            }
+            const fileContent = await dataFile.async('string');
             const data = JSON.parse(fileContent);
 
             // Validate data structure
@@ -3046,8 +3067,14 @@
 
               const data = this.getExportData();
               const jsonString = JSON.stringify(data, null, 2);
+
+              // Create ZIP file with JSON at root level
+              const zip = new JSZip();
+              zip.file('data.json', jsonString);
+              const zipBlob = await zip.generateAsync({ type: 'blob' });
+
               const writable = await this.fileHandle.createWritable();
-              await writable.write(jsonString);
+              await writable.write(zipBlob);
               await writable.close();
               console.log('Auto-synced to file');
             } catch (e) {
