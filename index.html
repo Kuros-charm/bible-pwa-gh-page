@@ -2768,10 +2768,10 @@
           try {
             // Prompt user to select a new file
             this.fileHandle = await window.showSaveFilePicker({
-              suggestedName: 'bible-backup.json',
+              suggestedName: 'bible-backup.zip',
               types: [{
-                description: 'JSON Files',
-                accept: { 'application/json': ['.json'] }
+                description: 'ZIP Files',
+                accept: { 'application/zip': ['.zip'] }
               }]
             });
             await this.saveFileHandle();
