@@ -2422,6 +2422,17 @@
         },
 
         closeVerseModal() {
+          // Re-select the verse to keep the widget open after drawer closes
+          const verse = this.verseModal.verse;
+          if (verse) {
+            // Delay re-selection to run after click.away handlers
+            this.$nextTick(() => {
+              this.verseActions = {
+                show: true,
+                verse: verse
+              };
+            });
+          }
           this.verseModal.show = false;
           this.verseModal.type = null;
           this.verseModal.title = '';
