@@ -214,7 +214,7 @@
       <template x-if="searchQuery && searchResults.length === 0">
         <div class="flex flex-col items-center justify-center py-16 text-secondary">
           <span class="text-4xl mb-4">📭</span>
-          <p>找不到符合經文</p>
+          <p>找不到符合�����經文</p>
         </div>
       </template>
 
@@ -931,7 +931,7 @@
             <!-- Re-select file button -->
             <button x-show="hasFileSystemAccess && fileHandle" @click="reselectFile()" :disabled="settingsModal.isBusy"
               class="mt-2 w-full text-accent hover:underline disabled:opacity-50" :style="`font-size: ${fontSize * 0.85}rem;`">
-              重新選擇檔案
+              重新綁定 ZIP 檔案
             </button>
           </div>
         </div>
@@ -2751,6 +2751,15 @@
           };
         },
 
+        // Generate backup ZIP blob from export data
+        async generateBackupZip() {
+          const data = this.getExportData();
+          const jsonString = JSON.stringify(data, null, 2);
+          const zip = new JSZip();
+          zip.file('data.json', jsonString);
+          return await zip.generateAsync({ type: 'blob' });
+        },
+
         // Re-select file for auto-save
         async reselectFile() {
           this.settingsModal.isBusy = true;
@@ -2787,13 +2796,7 @@
           this.settingsModal.message = '';
 
           try {
-            const data = this.getExportData();
-            const jsonString = JSON.stringify(data, null, 2);
-
-            // Create ZIP file with JSON at root level
-            const zip = new JSZip();
-            zip.file('data.json', jsonString);
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const zipBlob = await this.generateBackupZip();
 
             if (!this.fileHandle) {
               // No file selected, act like saveAsNewFile
@@ -2804,7 +2807,7 @@
             // Verify permission for existing file handle
             const hasPermission = await this.verifyPermission(true);
             if (!hasPermission) {
-              this.settingsModal.message = '權限被拒絕，請重新選擇檔案';
+              this.settingsModal.message = '權限被拒絕，請重新綁定 ZIP 檔案';
               this.settingsModal.isError = true;
               this.fileHandle = null;
               await this.saveFileHandle();
@@ -2837,13 +2840,7 @@
           this.settingsModal.message = '';
 
           try {
-            const data = this.getExportData();
-            const jsonString = JSON.stringify(data, null, 2);
-
-            // Create ZIP file with JSON at root level
-            const zip = new JSZip();
-            zip.file('data.json', jsonString);
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const zipBlob = await this.generateBackupZip();
 
             if (this.hasFileSystemAccess) {
               // Use File System Access API - always prompt for new file
@@ -2897,13 +2894,7 @@
           this.settingsModal.message = '';
 
           try {
-            const data = this.getExportData();
-            const jsonString = JSON.stringify(data, null, 2);
-
-            // Create ZIP file with JSON at root level
-            const zip = new JSZip();
-            zip.file('data.json', jsonString);
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const zipBlob = await this.generateBackupZip();
 
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
@@ -3065,13 +3056,7 @@
                 return;
               }
 
-              const data = this.getExportData();
-              const jsonString = JSON.stringify(data, null, 2);
-
-              // Create ZIP file with JSON at root level
-              const zip = new JSZip();
-              zip.file('data.json', jsonString);
-              const zipBlob = await zip.generateAsync({ type: 'blob' });
+              const zipBlob = await this.generateBackupZip();
 
               const writable = await this.fileHandle.createWritable();
               await writable.write(zipBlob);
