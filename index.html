@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" >
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content" >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" >
   <title>bible-pwa</title>
   <!-- <script src="https://cdn.tailwindcss.com"></script> --> <!-- using tailwindcss/vite now-->
   <script src="https://unpkg.com/idb-keyval@6/dist/umd.js"></script>
@@ -35,7 +35,8 @@
     }
 
     /* === Theme: Utility classes using CSS vars === */
-    body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); transition: background-color 0.3s, color 0.3s; }
+    html { touch-action: pan-x pan-y; }
+    body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); transition: background-color 0.3s, color 0.3s; touch-action: pan-x pan-y; }
     .bg-primary { background-color: var(--bg-primary); }
     .bg-secondary { background-color: var(--bg-secondary); }
     .text-primary { color: var(--text-primary); }
@@ -56,7 +57,7 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .verse-item { opacity: 0; animation: fadeIn 0.4s ease-out forwards; }
+    .verse-item { opacity: 0; animation: fadeIn 0.4s ease-out forwards; padding: 0rem 0.5rem; }
 
     @keyframes verseHighlight {
       0% { box-shadow: inset 0 0 0 3px var(--accent), 0 0 20px rgba(139, 69, 19, 0.3); }
@@ -70,7 +71,8 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal-content { background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 400px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
     .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; transition: box-shadow 0.2s ease, border-radius 0.2s ease; }
-    .verse-selected { box-shadow: inset 0 0 0 2px var(--accent-light), inset 0 2px 8px rgba(139, 69, 19, 0.15); border-radius: 0.5rem; padding: 0.25rem 0.5rem; margin: -0.25rem -0.5rem; }
+    .verse-selected { }
+    .verse-selected .verse-num-selected { background-color: var(--accent); color: var(--bg-primary); box-shadow: -0.25em 0 0 var(--accent), 0.25em 0 0 var(--accent); }
 
     /* === Dynamic content styles (used in x-html, can't use Tailwind) === */
     .sn-code { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; transition: color 0.2s; margin: 0 0.15em; }
@@ -96,8 +98,8 @@
       }
     }
   </style>
-  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-JYeV_Lok.js"></script>
-  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-BHaaPadk.css">
+  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-BSAUelww.js"></script>
+  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-DUcR76WJ.css">
 <link rel="manifest" href="/bible-pwa-gh-page/manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="/bible-pwa-gh-page/favicon.ico" sizes="48x48">
@@ -105,6 +107,12 @@
 <link rel="apple-touch-icon" href="/bible-pwa-gh-page/apple-touch-icon-180x180.png"></head>
 
 <body class="min-h-screen" x-data="bibleReader()" :class="{ 'overflow-hidden': isAnyDrawerOpen }">
+  <script>
+    // Prevent pinch zoom on Safari (ignores viewport meta)
+    document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+  </script>
 
   <div id="app" :style="`zoom: ${zoom / 100};`"
     @touchstart="handlePinchStart($event)"
@@ -247,8 +255,8 @@
               <div class="verse-item"
                 :data-verse-num="verse.verseNum"
                 :class="{ 'verse-selected': verseActions.show && verseActions.verse?.ref === verse.ref }"
-                :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}cc; color: ${getHighlightTextColor(verse.ref)}; border-radius: 0.25rem; padding: 0.25rem 0.5rem; margin: -0.25rem -0.5rem;` : '')">
-                <sup :class="getHighlightColor(verse.ref) ? '' : 'text-accent'" class="font-medium opacity-70" style="font-size: 0.75em; margin-right: 0em;" x-text="verse.verseNum"></sup>
+                :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}cc; color: ${getHighlightTextColor(verse.ref)};` : '')">
+                <sup :class="[getHighlightColor(verse.ref) ? '' : 'text-accent', (verseActions.show && verseActions.verse?.ref === verse.ref && !getHighlightColor(verse.ref)) ? 'verse-num-selected' : '']" class="font-medium opacity-70" :style="`font-size: 0.75em; margin-right: 0em;` + ((verseActions.show && verseActions.verse?.ref === verse.ref && getHighlightColor(verse.ref)) ? `background-color: ${getHighlightTextColor(verse.ref)}; color: ${getHighlightColor(verse.ref)}; box-shadow: -0.25em 0 0 ${getHighlightTextColor(verse.ref)}, 0.25em 0 0 ${getHighlightTextColor(verse.ref)};` : '')" x-text="verse.verseNum"></sup>
                 <span x-html="renderVerseText(verse.text)"></span>
                 <button x-show="notes[verse.ref]" @click.stop="openNoteModal(verse)"
                   class="inline-flex ml-1 opacity-70 hover:opacity-100" title="查看筆記">✏️</button>
@@ -360,11 +368,11 @@
       @click.stop>
 
       <!-- Verse Reference Header -->
-      <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+      <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between h-12">
         <span class="font-medium" x-text="verseActions.verse ? formatRef(verseActions.verse.ref) : ''"></span>
         <!-- Highlight indicator -->
-        <div x-show="verseActions.verse && verseHighlights[verseActions.verse.ref] && highlightDefs[verseHighlights[verseActions.verse.ref]]"
-          class="flex items-center gap-2 text-sm px-2 py-1 rounded-full"
+        <div class="flex items-center gap-2 text-sm px-2 py-1 rounded-full"
+          :class="(verseActions.verse && verseHighlights[verseActions.verse.ref] && highlightDefs[verseHighlights[verseActions.verse.ref]]) ? '' : 'invisible'"
           :style="verseActions.verse ? `background-color: ${getHighlightColor(verseActions.verse.ref)}cc; color: ${getHighlightTextColor(verseActions.verse.ref)};` : ''">
           <span x-text="verseActions.verse && highlightDefs[verseHighlights[verseActions.verse.ref]]?.name"></span>
         </div>
@@ -505,12 +513,6 @@
             class="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-custom hover:bg-secondary transition-colors text-secondary">
             <span>+</span>
             <span>新增標註</span>
-          </button>
-
-          <!-- Remove Highlight Selection -->
-          <button x-show="verseModal.selectedHighlightId" @click="removeHighlightSelection()"
-            class="w-full mt-3 flex items-center justify-center gap-2 p-2 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-sm">
-            <span>移除標註</span>
           </button>
         </div>
       </template>
@@ -807,20 +809,6 @@
             <div class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">
               <span x-text="currentFontFamilyName"></span>
             </div>
-          </button>
-        </div>
-
-        <!-- Bible Version Section -->
-        <div class="space-y-3 mb-6">
-          <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">📚 聖經版本</h4>
-
-          <button @click="versionModal.tab = 'select'; versionModal.show = true; settingsModal.show = false"
-            class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
-            <div class="flex items-center gap-3">
-              <span>📖</span>
-              <span class="text-primary" x-text="currentVersion.name"></span>
-            </div>
-            <span class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">切換 ▶</span>
           </button>
         </div>
 
@@ -1722,9 +1710,11 @@
             touch2.clientY - touch1.clientY
           );
 
-          // Calculate zoom based on pinch scale
+          // Calculate zoom based on pinch scale with dampening for less sensitivity
           const scale = distance / this.pinchState.initialDistance;
-          const newZoom = Math.round(this.pinchState.initialZoom * scale);
+          const dampening = 0.4; // Lower = less sensitive (0.4 means 40% of the gesture effect)
+          const dampenedScale = 1 + (scale - 1) * dampening;
+          const newZoom = Math.round(this.pinchState.initialZoom * dampenedScale);
 
           // Clamp to valid range
           this.zoom = Math.max(50, Math.min(150, newZoom));
@@ -2585,7 +2575,12 @@
         },
 
         selectHighlight(highlightId) {
-          this.verseModal.selectedHighlightId = highlightId;
+          // Toggle: if clicking the same highlight, deselect it (remove highlight)
+          if (this.verseModal.selectedHighlightId === highlightId) {
+            this.verseModal.selectedHighlightId = null;
+          } else {
+            this.verseModal.selectedHighlightId = highlightId;
+          }
         },
 
         saveHighlight() {
