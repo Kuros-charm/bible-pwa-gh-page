@@ -53,17 +53,10 @@
     .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--accent-light); border-radius: 3px; }
 
     /* === Animations === */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .verse-item {
+      opacity: 1;
+      padding: 0rem 0.5rem;
     }
-    .verse-item { opacity: 0; animation: fadeIn 0.4s ease-out forwards; padding: 0rem 0.5rem; }
-
-    @keyframes verseHighlight {
-      0% { box-shadow: inset 0 0 0 3px var(--accent), 0 0 20px rgba(139, 69, 19, 0.3); }
-      100% { box-shadow: inset 0 0 0 0 transparent, 0 0 0 transparent; }
-    }
-    .verse-highlight { animation: verseHighlight 2s ease-out forwards; border-radius: 0.5rem; background-color: var(--bg-secondary) !important; opacity: 1 !important; }
 
     /* === Components using CSS vars (can't fully convert to Tailwind) === */
     .section-title { color: var(--accent); font-weight: 700; }
@@ -71,8 +64,7 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
     .modal-content { background-color: var(--bg-primary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; width: 90%; max-width: 400px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
     .verse-container { user-select: none; -webkit-user-select: none; cursor: pointer; transition: box-shadow 0.2s ease, border-radius 0.2s ease; }
-    .verse-selected { }
-    .verse-selected .verse-num-selected { background-color: var(--accent); color: var(--bg-primary); box-shadow: -0.25em 0 0 var(--accent), 0.25em 0 0 var(--accent); }
+    .verse-container.tts-playing { pointer-events: none; cursor: default; }
 
     /* === Dynamic content styles (used in x-html, can't use Tailwind) === */
     .sn-code { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; transition: color 0.2s; margin: 0 0.15em; }
@@ -219,8 +211,8 @@
       overflow: hidden;
     }
   </style>
-  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-DlCPVQid.js"></script>
-  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-U7rq2bm3.css">
+  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-CN4y9Sss.js"></script>
+  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-B58fT-fA.css">
 <link rel="manifest" href="/bible-pwa-gh-page/manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="/bible-pwa-gh-page/favicon.ico" sizes="48x48">
@@ -346,6 +338,82 @@
       </div>
     </div>
 
+    <!-- Expandable TTS Control Bar -->
+    <div class="overflow-hidden transition-all duration-300 ease-in-out"
+      :class="tts.show ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'">
+      <div class="max-w-4xl mx-auto px-4 pt-2 pb-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Play/Stop Toggle Button -->
+          <div class="flex items-center gap-1">
+            <button @click="ttsToggle()"
+              :disabled="!tts.playing && !tts.paused && (!currentVerses || currentVerses.length === 0)"
+              class="p-2 rounded-lg transition-colors disabled:opacity-50"
+              :class="tts.playing || tts.paused ? 'bg-accent text-white' : 'bg-secondary text-primary hover:bg-primary hover:text-accent'"
+              :title="tts.playing || tts.paused ? '停止' : '播放'">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!(tts.playing || tts.paused)">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="tts.playing || tts.paused">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Speed Control -->
+          <div class="flex items-center gap-2">
+            <span class="text-secondary text-sm">速度</span>
+            <button @click="tts.speed -= 0.1; tts.speed = Math.max(0.5, tts.speed); saveTtsSettings()"
+              :disabled="tts.speed <= 0.5"
+              class="p-1 rounded hover:bg-secondary text-secondary transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+              </svg>
+            </button>
+            <span class="text-primary font-medium min-w-[3ch] text-center" x-text="tts.speed.toFixed(2) + 'x'"></span>
+            <button @click="tts.speed += 0.1; tts.speed = Math.min(2, tts.speed); saveTtsSettings()"
+              :disabled="tts.speed >= 2"
+              class="p-1 rounded hover:bg-secondary text-secondary transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Language/Voice Selection -->
+          <div class="flex items-center gap-2">
+            <select x-model="tts.language" @change="onTtsLanguageChange(); saveTtsSettings()"
+              class="bg-secondary border border-custom rounded-lg px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/30">
+              <option value="zh-TW">中文（國語）</option>
+              <option value="zh-HK">中文（粵語）</option>
+              <option value="en-US">English</option>
+            </select>
+            <select x-model="tts.selectedVoice" x-show="tts.voices.length > 0" @change="saveTtsSettings()"
+              class="bg-secondary border border-custom rounded-lg px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/30 max-w-[150px]">
+              <template x-for="voice in tts.voices" :key="voice.name">
+                <option :value="voice.name" x-text="voice.name"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Close TTS bar button -->
+          <button @click="tts.show = false; ttsStop()"
+            class="ml-auto p-2 text-secondary hover:text-primary hover:bg-secondary rounded-full transition-colors"
+            title="關閉朗讀">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <!-- Playing indicator -->
+        <div x-show="tts.playing || tts.paused" class="mt-2 text-sm text-secondary">
+          <span x-text="tts.playing ? '🔊 播放中' : '⏸ 已暫停'"></span>
+          <span x-show="currentVerses[tts.currentVerseIndex]"> - <span x-text="formatRef(currentVerses[tts.currentVerseIndex].ref)"></span></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Subtle bottom border -->
     <div class="h-px w-full opacity-50" style="background: linear-gradient(to right, transparent, var(--border), transparent);"></div>
   </header>
@@ -397,6 +465,7 @@
           <template x-for="(verse, index) in currentVerses" :key="'verse-' + index">
             <div class="verse-container"
               :style="`padding-top: ${verseSpacing / 2}px; padding-bottom: ${verseSpacing / 2}px;`"
+              :class="{ 'tts-playing': tts.playing || tts.paused }"
               @click="showVerseActions(verse)"
               @contextmenu.prevent="showVerseActions(verse)">
               <!-- Source Title (pre-existing from Bible text, not editable) -->
@@ -413,11 +482,18 @@
               <!-- Verse Content -->
               <div class="verse-item"
                 :data-verse-num="verse.verseNum"
-                :class="{ 'verse-selected': verseActions.show && verseActions.verse?.ref === verse.ref }"
-                :style="`animation-delay: ${index * 50}ms; font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}cc; color: ${getHighlightTextColor(verse.ref)};` : '')">
-                <sup :class="[getHighlightColor(verse.ref) ? '' : 'text-accent', (verseActions.show && verseActions.verse?.ref === verse.ref && !getHighlightColor(verse.ref)) ? 'verse-num-selected' : '']" class="font-medium opacity-70" :style="`font-size: 0.75em; margin-right: 0em;` + ((verseActions.show && verseActions.verse?.ref === verse.ref && getHighlightColor(verse.ref)) ? `background-color: ${getHighlightTextColor(verse.ref)}; color: ${getHighlightColor(verse.ref)}; box-shadow: -0.25em 0 0 ${getHighlightTextColor(verse.ref)}, 0.25em 0 0 ${getHighlightTextColor(verse.ref)};` : '')" x-text="verse.verseNum"></sup>
+                :class="{
+                  'verse-selected': verseActions.show && verseActions.verse?.ref === verse.ref && !(tts.playing || tts.paused),
+                  'verse-tts': (tts.playing || tts.paused) && tts.currentVerseIndex === index
+                }"
+                :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};` + (getHighlightColor(verse.ref) ? `background-color: ${getHighlightColor(verse.ref)}cc; color: ${getHighlightTextColor(verse.ref)};` : '')">
+                <sup
+                  class="font-medium opacity-70"
+                  :style="`font-size: 0.75em; margin-right: 0em;` + (getVerseNumBgColor(verse.ref) ? `background-color: ${getVerseNumBgColor(verse.ref)}; color: ${getVerseNumColor(verse.ref)}; box-shadow: -0.25em 0 0 ${getVerseNumBoxShadowColor(verse.ref)}, 0.25em 0 0 ${getVerseNumBoxShadowColor(verse.ref)};` : `color: ${getVerseNumColor(verse.ref)}`)"
+                  x-text="verse.verseNum"
+                ></sup>
                 <span x-html="renderVerseText(verse.text)"></span>
-                <button x-show="notes[verse.ref]" @click.stop="openNoteModal(verse)"
+                <button x-show="notes[verse.ref] && !(tts.playing || tts.paused)" @click.stop="openNoteModal(verse)"
                   class="inline-flex ml-1 opacity-70 hover:opacity-100" title="查看筆記">✏️</button>
               </div>
               <!-- Comparison Verses -->
@@ -514,7 +590,7 @@
 
 
   <!-- Verse Actions Widget -->
-  <div x-cloak x-show="verseActions.show"
+  <div x-cloak x-show="verseActions.show && !(tts.playing || tts.paused)"
     x-transition:enter="transition ease-out duration-200"
     x-transition:enter-start="opacity-0 translate-y-4"
     x-transition:enter-end="opacity-100 translate-y-0"
@@ -1677,6 +1753,17 @@
         },
         readingHistory: [],  // Array of { bookCode, chapter, timestamp }
         _skipHistoryRecording: true,  // Skip history during initial load
+        // TTS (Text-to-Speech) state
+        tts: {
+          show: false,
+          playing: false,
+          paused: false,
+          currentVerseIndex: 0,
+          speed: 1,
+          language: 'zh-TW',
+          voices: [],
+          selectedVoice: null
+        },
         snDictTexts: {},  // Cache for raw dictionary text by version ID
         snDictLoading: false,
         hasFileSystemAccess: false,
@@ -1684,9 +1771,10 @@
         autoSync: false,
         // Header actions configuration
         headerActions: [
-          { id: 'search', name: '搜尋', icon: 'search', visible: true },
-          { id: 'history', name: '閱讀紀錄', icon: 'clock', visible: true },
-          { id: 'settings', name: '設定', icon: 'settings', visible: true }
+          { id: 'search', name: '搜尋', visible: true },
+          { id: 'tts', name: '朗讀', visible: true },
+          { id: 'history', name: '閱讀紀錄', visible: true },
+          { id: 'settings', name: '設定', visible: true }
         ],
         headerActionsModal: {
           show: false,
@@ -1760,6 +1848,9 @@
             document.documentElement.classList.toggle('dark', event.matches);
           });
 
+          // Initialize TTS voices
+          this.initTTS();
+
           // Load saved data from IndexedDB
           await this.loadFromStorage();
 
@@ -1769,7 +1860,7 @@
         // IndexedDB helpers using idb-keyval
         async loadFromStorage() {
           try {
-            const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, savedFileHandle, savedVersionId, savedCachedVersions, savedFontSize, savedLineHeight, savedVerseSpacing, savedFontFamily, savedHighlightDefs, savedVerseHighlights, savedZoom] = await Promise.all([
+            const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, savedFileHandle, savedVersionId, savedCachedVersions, savedFontSize, savedLineHeight, savedVerseSpacing, savedFontFamily, savedHighlightDefs, savedVerseHighlights, savedZoom, savedTtsSpeed, savedTtsLanguage, savedTtsVoice] = await Promise.all([
               this._storageLoad('bible_customTitles'),
               this._storageLoad('bible_notes'),
               this._storageLoad('bible_selectedBook'),
@@ -1784,7 +1875,10 @@
               this._storageLoad('bible_fontFamily'),
               this._storageLoad('bible_highlightDefs'),
               this._storageLoad('bible_verseHighlights'),
-              this._storageLoad('bible_zoom')
+              this._storageLoad('bible_zoom'),
+              this._storageLoad('bible_ttsSpeed'),
+              this._storageLoad('bible_ttsLanguage'),
+              this._storageLoad('bible_ttsVoice')
             ]);
 
             if (savedTitles) {
@@ -1847,6 +1941,17 @@
               this.verseHighlights = this.migrateRefKeys(savedVerseHighlights);
             }
 
+            // Restore TTS settings
+            if (savedTtsSpeed && savedTtsSpeed >= 0.5 && savedTtsSpeed <= 2) {
+              this.tts.speed = savedTtsSpeed;
+            }
+            if (savedTtsLanguage) {
+              this.tts.language = savedTtsLanguage;
+            }
+            if (savedTtsVoice) {
+              this.tts.selectedVoice = savedTtsVoice;
+            }
+
             // Load compare version order
             await this.loadCompareVersionOrder();
 
@@ -1857,6 +1962,165 @@
             await this.loadHeaderActions();
           } catch (e) {
             console.warn('Failed to load from IndexedDB:', e);
+          }
+        },
+
+        // === TTS (Text-to-Speech) Methods ===
+        initTTS() {
+          if ('speechSynthesis' in window) {
+            // Load voices
+            const loadVoices = () => {
+              const voices = speechSynthesis.getVoices();
+              const lang = this.tts.language;
+              
+              // Filter voices by language
+              let filteredVoices = voices.filter(v => {
+                if (lang === 'zh-TW' || lang === 'zh-HK') {
+                  return v.lang.startsWith('zh');
+                } else if (lang === 'en-US') {
+                  return v.lang.startsWith('en');
+                }
+                return v.lang === lang;
+              });
+              
+              // If no specific voices, use all available
+              if (filteredVoices.length === 0) {
+                filteredVoices = voices.filter(v => v.lang.startsWith(lang.split('-')[0]));
+              }
+              
+              this.tts.voices = filteredVoices;
+              
+              // Auto-select first voice if none selected
+              if (filteredVoices.length > 0 && !this.tts.selectedVoice) {
+                this.tts.selectedVoice = filteredVoices[0].name;
+              }
+            };
+            
+            // Voices might load asynchronously
+            loadVoices();
+            speechSynthesis.onvoiceschanged = loadVoices;
+          } else {
+            console.warn('Speech synthesis not supported');
+          }
+        },
+
+        onTtsLanguageChange() {
+          // Re-filter voices when language changes
+          this.initTTS();
+        },
+
+        getTtsSpeed() {
+          return this.tts.speed;
+        },
+
+        getSelectedVoice() {
+          if (!this.tts.selectedVoice || this.tts.voices.length === 0) return null;
+          return this.tts.voices.find(v => v.name === this.tts.selectedVoice) || null;
+        },
+
+        async ttsPlay() {
+          if (!this.currentVerses || this.currentVerses.length === 0) return;
+          
+          // Cancel any ongoing speech
+          speechSynthesis.cancel();
+          
+          // Determine starting verse: selected verse if exists, otherwise from current index
+          let startIndex = 0;
+          if (this.verseActions.show && this.verseActions.verse) {
+            const selectedRef = this.verseActions.verse.ref;
+            const idx = this.currentVerses.findIndex(v => v.ref === selectedRef);
+            if (idx !== -1) startIndex = idx;
+          }
+          
+          this.tts.currentVerseIndex = startIndex;
+          this.tts.playing = true;
+          this.tts.paused = false;
+          
+          await this.ttsSpeakCurrentVerse();
+        },
+
+        async ttsSpeakCurrentVerse() {
+          if (this.tts.currentVerseIndex >= this.currentVerses.length) {
+            this.ttsStop();
+            return;
+          }
+          
+          const verse = this.currentVerses[this.tts.currentVerseIndex];
+          if (!verse) {
+            this.ttsStop();
+            return;
+          }
+          
+          const currentVerseEl = document.querySelector(`[data-verse-num="${verse.verseNum}"]`);
+
+          
+          // Scroll to current verse
+          currentVerseEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          const text = this.renderVerseText(verse.text).replace(/<[^>]*>/g, '');
+          const utterance = new SpeechSynthesisUtterance(text);
+          
+          utterance.rate = this.tts.speed;
+          utterance.lang = this.tts.language;
+          
+          const selectedVoice = this.getSelectedVoice();
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+          }
+          
+          utterance.onend = () => {
+            this.tts.currentVerseIndex++;
+            this.ttsSpeakCurrentVerse();
+          };
+          
+          utterance.onerror = (e) => {
+            console.warn('TTS error:', e);
+            if (e.error !== 'interrupted') {
+              this.tts.currentVerseIndex++;
+              this.ttsSpeakCurrentVerse();
+            }
+          };
+          
+          speechSynthesis.speak(utterance);
+        },
+
+        ttsPause() {
+          if (speechSynthesis.paused) {
+            speechSynthesis.resume();
+            this.tts.paused = false;
+            this.tts.playing = true;
+          } else if (speechSynthesis.speaking) {
+            speechSynthesis.pause();
+            this.tts.paused = true;
+            this.tts.playing = false;
+          }
+        },
+
+        ttsResume() {
+          if (speechSynthesis.paused) {
+            speechSynthesis.resume();
+            this.tts.paused = false;
+            this.tts.playing = true;
+          }
+        },
+
+        ttsStop() {
+          speechSynthesis.cancel();
+          this.tts.playing = false;
+          this.tts.paused = false;
+          // Remove highlight from all verses
+          document.querySelectorAll('.verse-item.verse-tts').forEach(el => {
+            el.classList.remove('verse-tts');
+          });
+          const verse = this.currentVerses[this.tts.currentVerseIndex];
+          this.showVerseActions(verse);
+        },
+
+        ttsToggle() {
+          if (this.tts.playing || this.tts.paused) {
+            this.ttsStop();
+          } else {
+            this.ttsPlay();
           }
         },
 
@@ -1935,6 +2199,14 @@
             this._storageSave('bible_verseSpacing', this.verseSpacing),
             this._storageSave('bible_fontFamily', this.fontFamily),
             this._storageSave('bible_zoom', this.zoom)
+          ]);
+        },
+
+        async saveTtsSettings() {
+          await Promise.all([
+            this._storageSave('bible_ttsSpeed', this.tts.speed),
+            this._storageSave('bible_ttsLanguage', this.tts.language),
+            this._storageSave('bible_ttsVoice', this.tts.selectedVoice)
           ]);
         },
 
@@ -2684,10 +2956,16 @@
           this.selectedChapter = verse.chapter;
           this.loadVerses();
           this.clearSearch();
+          this.headerSearchOpen = false;
 
-          // Scroll to and highlight the verse after DOM updates
+          // Scroll to, highlight, and show verse actions after DOM updates
           this.$nextTick(() => {
             this.scrollToAndHighlightVerse(verse.verseNum);
+            // Find the verse in currentVerses and show actions
+            const currentVerse = this.currentVerses.find(v => v.verseNum === verse.verseNum && v.ref === verse.ref);
+            if (currentVerse) {
+              this.showVerseActions(currentVerse);
+            }
           });
         },
 
@@ -2700,6 +2978,7 @@
         getHeaderActionIcon(actionId) {
           const icons = {
             search: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>',
+            tts: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>',
             history: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
             settings: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'
           };
@@ -2710,11 +2989,19 @@
           switch (actionId) {
             case 'search':
               this.headerSearchOpen = !this.headerSearchOpen;
+              this.tts.show = false;
               if (!this.headerSearchOpen) {
                 this.searchQuery = '';
                 this.searchResults = [];
               } else {
                 this.$nextTick(() => this.$refs.headerSearchInput?.focus());
+              }
+              break;
+            case 'tts':
+              this.tts.show = !this.tts.show;
+              this.headerSearchOpen = false;
+              if (this.tts.show && this.tts.voices.length === 0) {
+                this.initTTS();
               }
               break;
             case 'history':
@@ -2777,9 +3064,10 @@
           const saved = await this._storageLoad('bible_headerActions');
           if (saved && Array.isArray(saved)) {
             const defaultActions = [
-              { id: 'search', name: '搜尋', icon: 'search', visible: true },
-              { id: 'history', name: '閱讀紀錄', icon: 'clock', visible: true },
-              { id: 'settings', name: '設定', icon: 'settings', visible: true }
+              { id: 'search', name: '搜尋', visible: true },
+              { id: 'tts', name: '朗讀', visible: true },
+              { id: 'history', name: '閱讀紀錄', visible: true },
+              { id: 'settings', name: '設定', visible: true }
             ];
             const savedIds = saved.map(a => a.id);
             const merged = saved.filter(a => defaultActions.some(d => d.id === a.id));
@@ -3176,6 +3464,63 @@
 
           // Return black for light backgrounds, white for dark backgrounds
           return luminance > 0.6 ? '#000000' : '#ffffff';
+        },
+
+        getVerseNumBgColor(verseRef) {
+          const highlightColor = this.getHighlightColor(verseRef);
+          const isSelected = this.verseActions.show && this.verseActions.verse?.ref === verseRef;
+          const idx = this.currentVerses.findIndex(v => v.ref === verseRef);
+          const isTtsPlaying = idx !== -1 && (this.tts.playing || this.tts.paused) && this.tts.currentVerseIndex === idx;
+
+          if (highlightColor) {
+            if (isSelected || isTtsPlaying) {
+              return this.getHighlightTextColor(verseRef);
+            }
+            return highlightColor;
+          }
+
+          if (isSelected || isTtsPlaying) {
+            return 'var(--accent)';
+          }
+          return null;
+        },
+
+        getVerseNumColor(verseRef) {
+          const highlightColor = this.getHighlightColor(verseRef);
+          const isSelected = this.verseActions.show && this.verseActions.verse?.ref === verseRef;
+          const idx = this.currentVerses.findIndex(v => v.ref === verseRef);
+          const isTtsPlaying = idx !== -1 && (this.tts.playing || this.tts.paused) && this.tts.currentVerseIndex === idx;
+
+          if (highlightColor) {
+            if (isSelected || isTtsPlaying) {
+              return highlightColor;
+            }
+            return this.getHighlightTextColor(verseRef);
+          }
+
+          if (isSelected || isTtsPlaying) {
+            return 'var(--bg-primary)';
+          }
+          return 'var(--accent)';
+        },
+
+        getVerseNumBoxShadowColor(verseRef) {
+          const highlightColor = this.getHighlightColor(verseRef);
+          const isSelected = this.verseActions.show && this.verseActions.verse?.ref === verseRef;
+          const idx = this.currentVerses.findIndex(v => v.ref === verseRef);
+          const isTtsPlaying = idx !== -1 && (this.tts.playing || this.tts.paused) && this.tts.currentVerseIndex === idx;
+
+          if (highlightColor) {
+            if (isSelected || isTtsPlaying) {
+              return this.getHighlightTextColor(verseRef);
+            }
+            return null;
+          }
+
+          if (isSelected || isTtsPlaying) {
+            return 'var(--accent)';
+          }
+          return null;
         },
 
         // Settings & File System Access API methods
@@ -3749,11 +4094,9 @@
 
         // Scroll to a specific verse and highlight it
         scrollToAndHighlightVerse(verseNum) {
-          // Small delay to ensure animations are complete
           setTimeout(() => {
             const verseElement = document.querySelector(`[data-verse-num="${verseNum}"]`);
             if (verseElement) {
-              // Scroll the verse into view with some offset for the header
               const headerHeight = 80;
               const elementTop = verseElement.getBoundingClientRect().top + window.scrollY;
               window.scrollTo({
@@ -3761,12 +4104,10 @@
                 behavior: 'smooth'
               });
 
-              // Remove class first if present, force reflow, then add back to restart animation
+              // Restart verse highlight animation
               verseElement.classList.remove('verse-highlight');
               void verseElement.offsetWidth;
               verseElement.classList.add('verse-highlight');
-              // Don't remove the class - it will stay at final animation state (no visual effect)
-              // Removing it would cause the verse-item opacity:0 to kick in again
             }
           }, 100);
         },
@@ -3780,12 +4121,6 @@
           }
         },
 
-        async saveReadingHistory() {
-          const value = JSON.parse(JSON.stringify(this.readingHistory));
-          await this._storageSave('bible_readingHistory', value);
-        },
-
-        // Save reading history to IndexedDB
         async saveReadingHistory() {
           const value = JSON.parse(JSON.stringify(this.readingHistory));
           await this._storageSave('bible_readingHistory', value);
