@@ -97,16 +97,142 @@
         max-height: 90dvh;
       }
     }
+
+    /* =====================================================================
+       REUSABLE DRAWER DIALOG STYLES
+       =====================================================================
+       Usage: Apply .drawer-dialog to <dialog> element
+       Inner structure uses .drawer-panel-container, .drawer-handle,
+       .drawer-header, .drawer-title, .drawer-close-btn, .drawer-content, .drawer-footer
+       ===================================================================== */
+
+    .drawer-dialog {
+      padding: 0;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      width: 100%;
+      max-width: none;
+      height: 100%;
+      max-height: none;
+    }
+    .drawer-dialog::backdrop {
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .drawer-dialog[open] .drawer-panel,
+    .drawer-dialog[open] .drawer-panel-container {
+      animation: drawerSlideUp 0.3s ease-out;
+    }
+    @keyframes drawerSlideUp {
+      from { transform: translate(-50%, 100%); }
+      to { transform: translate(-50%, 0); }
+    }
+
+    /* Drawer panel container - the visible bottom sheet */
+    .drawer-panel-container {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+      width: 100%;
+      max-width: 42rem; /* max-w-2xl */
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      border-radius: 1rem 1rem 0 0;
+      background-color: var(--bg-primary);
+      height: 75dvh;
+      max-height: 75dvh;
+    }
+    @media (min-width: 640px) {
+      .drawer-panel-container {
+        height: auto;
+        min-height: 75dvh;
+        max-height: 90dvh;
+      }
+    }
+
+    /* Drag handle */
+    .drawer-handle {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      padding: 0.5rem 0;
+    }
+    .drawer-handle::after {
+      content: '';
+      width: 2.5rem;
+      height: 0.25rem;
+      border-radius: 9999px;
+      background-color: var(--border);
+    }
+
+    /* Header */
+    .drawer-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Title */
+    .drawer-title {
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Close button */
+    .drawer-close-btn {
+      padding: 0.5rem;
+      border-radius: 9999px;
+      flex-shrink: 0;
+      transition: background-color 0.2s;
+    }
+    .drawer-close-btn:hover {
+      background-color: var(--bg-secondary);
+    }
+
+    /* Content area */
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    /* Footer */
+    .drawer-footer {
+      flex-shrink: 0;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Prevent background scroll when any dialog is open */
+    body:has(dialog[open]) {
+      overflow: hidden;
+    }
   </style>
-  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-BSAUelww.js"></script>
-  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-DUcR76WJ.css">
+  <script type="module" crossorigin src="/bible-pwa-gh-page/assets/index-DlCPVQid.js"></script>
+  <link rel="stylesheet" crossorigin href="/bible-pwa-gh-page/assets/index-U7rq2bm3.css">
 <link rel="manifest" href="/bible-pwa-gh-page/manifest.webmanifest">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="/bible-pwa-gh-page/favicon.ico" sizes="48x48">
 <link rel="icon" href="/bible-pwa-gh-page/favicon.svg" sizes="any" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/bible-pwa-gh-page/apple-touch-icon-180x180.png"></head>
 
-<body class="min-h-screen" x-data="bibleReader()" :class="{ 'overflow-hidden': isAnyDrawerOpen }">
+<body class="min-h-screen" x-data="bibleReader()">
+  <svg style="display: none;">
+    <symbol id="icon-close" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </symbol>
+  </svg>
   <script>
     // Prevent pinch zoom on Safari (ignores viewport meta)
     document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
@@ -124,13 +250,10 @@
     <!-- Top Row: Navigation & Controls -->
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
 
-      <!-- Left: Menu placeholder for balance -->
-      <div class="w-10"></div>
-
-      <!-- Center: Book/Chapter & Version -->
+      <!-- Left: Book/Chapter & Version -->
       <div class="flex items-center gap-3">
         <!-- Location -->
-        <button @click="navModal.tab = 'chapters'; navModal.show = true"
+        <button @click="navModal.pendingBook = null; navModal.pendingChapter = null; navModal.tab = 'chapters'; navModal.show = true; $refs.navDialog.showModal()"
           class="flex items-center gap-1 py-1.5 hover:opacity-70 transition-opacity">
           <span class="text-base font-medium text-primary" x-text="selectedBookName + ' ' + selectedChapter + ' 章'"></span>
           <svg class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +265,7 @@
         <div class="w-px h-4" style="background-color: var(--border);"></div>
 
         <!-- Version -->
-        <button @click="versionModal.tab = 'select'; versionModal.show = true"
+        <button @click="versionModal.tab = 'select'; versionModal.show = true; $refs.versionDialog.showModal()"
           class="flex items-center gap-1 py-1.5 hover:opacity-70 transition-opacity">
           <span class="text-base text-secondary" x-text="currentVersion.name"></span>
           <svg class="w-3.5 h-3.5 text-secondary opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,19 +276,45 @@
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-1">
-        <button @click="headerSearchOpen = !headerSearchOpen; if (!headerSearchOpen) { searchQuery = ''; searchResults = []; } else { $nextTick(() => $refs.headerSearchInput?.focus()); }"
-          :class="headerSearchOpen ? 'text-accent bg-secondary' : 'text-secondary'"
-          class="p-2 rounded-full hover:bg-secondary transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </button>
-        <button @click="settingsModal.show = true" class="p-2 rounded-full hover:bg-secondary text-secondary transition-colors" title="設定">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-          </svg>
-        </button>
+        <!-- Visible header actions -->
+        <template x-for="action in headerActions.filter(a => a.visible)" :key="'header-action-' + action.id">
+          <button @click="triggerHeaderAction(action.id)"
+            :class="action.id === 'search' && headerSearchOpen ? 'text-accent bg-secondary' : 'text-secondary'"
+            class="p-2 rounded-full hover:bg-secondary transition-colors"
+            :title="action.name">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getHeaderActionIcon(action.id)"></svg>
+          </button>
+        </template>
+        <!-- Overflow menu (shown when there are hidden actions) -->
+        <div x-show="headerActions.some(a => !a.visible)" class="relative">
+          <button @click="headerOverflowOpen = !headerOverflowOpen"
+            :class="headerOverflowOpen ? 'text-accent bg-secondary' : 'text-secondary'"
+            class="p-2 rounded-full hover:bg-secondary transition-colors" title="更多">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+            </svg>
+          </button>
+          <!-- Dropdown menu -->
+          <div x-show="headerOverflowOpen" x-cloak
+            @click.away="headerOverflowOpen = false"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="absolute right-0 top-full mt-1 py-1 min-w-[140px] rounded-lg shadow-lg border border-custom z-50"
+            style="background-color: var(--bg-primary);">
+            <template x-for="action in headerActions.filter(a => !a.visible)" :key="'overflow-action-' + action.id">
+              <button @click="triggerHeaderAction(action.id); headerOverflowOpen = false"
+                class="w-full px-4 py-2 text-left text-primary hover:bg-secondary transition-colors flex items-center gap-3"
+                :style="`font-size: ${fontSize * 0.9}rem;`">
+                <svg class="w-4 h-4 text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getHeaderActionIcon(action.id)"></svg>
+                <span x-text="action.name"></span>
+              </button>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -173,13 +322,23 @@
     <div class="overflow-hidden transition-all duration-300 ease-in-out"
       :class="headerSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'">
       <div class="max-w-4xl mx-auto px-4 pt-2 pb-3">
-        <div class="relative">
-          <input type="text" x-model="searchQuery" @input="search()" placeholder="搜尋經文..."
-            x-ref="headerSearchInput"
-            class="w-full bg-secondary border border-custom rounded-lg py-2 pl-4 pr-10 text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30 shadow-inner">
-          <button x-show="searchQuery" @click="clearSearch()"
-            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-secondary hover:text-primary">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <input type="text" x-model="searchQuery" @input="search()" placeholder="搜尋經文..."
+              x-ref="headerSearchInput"
+              class="w-full bg-secondary border border-custom rounded-lg py-2 pl-4 pr-10 text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30 shadow-inner">
+            <button x-show="searchQuery" @click="clearSearch()"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-secondary hover:text-primary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <!-- Close search bar button -->
+          <button @click="headerSearchOpen = false; searchQuery = ''; searchResults = []"
+            class="p-2 text-secondary hover:text-primary hover:bg-secondary rounded-full transition-colors flex-shrink-0"
+            title="關閉搜尋">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -191,7 +350,7 @@
     <div class="h-px w-full opacity-50" style="background: linear-gradient(to right, transparent, var(--border), transparent);"></div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-2 sm:px-4 py-4"
+  <main class="max-w-4xl mx-auto px-1 sm:px-1 py-4"
     @touchstart="handleSwipeStart($event)"
     @touchmove="handleSwipeMove($event)"
     @touchend="handleSwipeEnd()"
@@ -405,43 +564,26 @@
     </div>
   </div>
 
-  <!-- Unified Verse Modal (Title/Note/Highlight) -->
-  <div x-cloak x-show="verseModal.show"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-[200] bg-black/40" @click.self="closeVerseModal()">
-    <!-- Drawer Panel -->
-    <div x-show="verseModal.show"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
-      x-transition:leave-end="translate-y-full"
-      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl shadow-2xl flex flex-col rounded-t-2xl drawer-panel"
-      style="background-color: var(--bg-primary);">
-      <!-- Drag Handle -->
-      <div class="flex-shrink-0 flex justify-center py-2">
-        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
-      </div>
-      <!-- Header -->
-      <div class="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
-        <h3 class="font-semibold text-accent flex items-center gap-1"
-          :style="`font-size: ${fontSize}rem;`">
+  <!-- Unified Verse Modal (Title/Note/Highlight) - Uses reusable drawer pattern -->
+  <dialog x-ref="verseDialog"
+    @close="verseModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
           <span x-text="verseModalConfig.icon"></span>
           <span x-text="verseModalConfig.label"></span>
           <span class="text-secondary font-normal" x-text="verseModal.verse ? ' - ' + formatRef(verseModal.verse.ref) : ''"></span>
         </h3>
-        <button @click="closeVerseModal()"
-          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
-          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
         </button>
       </div>
       <!-- Verse Reference - scrollable, height for 2 lines -->
       <div x-show="verseModal.verse" class="flex-shrink-0 px-4 py-2 border-b overflow-y-auto scrollbar-thin"
-        :style="`border-color: var(--border); background-color: var(--bg-secondary); max-height: calc(${fontSize * 2}rem * ${lineHeight} + 1rem);`">
+        :style="`border-color: var(--border); background-color: var(--bg-secondary); max-height: calc(${fontSize * 2}rem * ${lineHeight} + 1.25rem);`">
         <p class="text-primary"
           :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
           x-html="verseModal.verse ? renderVerseText(verseModal.verse.text) : ''"></p>
@@ -449,27 +591,26 @@
 
       <!-- Title Content -->
       <template x-if="verseModal.type === 'title'">
-        <div class="flex-1 flex flex-col p-4 pb-0 overflow-hidden min-h-0">
+        <div class="drawer-content scrollbar-thin pt-4" :style="`font-size: ${fontSize}rem;`">
           <input type="text" x-model="verseModal.title" x-ref="titleInput" @keydown.enter="saveTitle()"
-            @keydown.escape="closeVerseModal()" placeholder="輸入標題..."
+            @keydown.escape="$refs.verseDialog.close()" placeholder="輸入標題..."
             :style="`font-size: ${fontSize}rem; font-family: ${currentFontFamily};`"
-            class="flex-shrink-0 w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600">
-          <div class="flex-1 min-h-0"></div>
+            class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600">
         </div>
       </template>
 
       <!-- Note Content -->
       <template x-if="verseModal.type === 'note'">
-        <div class="flex-1 flex flex-col p-4 pb-0 overflow-hidden min-h-0">
-          <textarea x-model="verseModal.note" x-ref="noteInput" @keydown.escape="closeVerseModal()" placeholder="輸入筆記..."
+        <div class="drawer-content scrollbar-thin pt-4" :style="`font-size: ${fontSize}rem;`">
+          <textarea x-model="verseModal.note" x-ref="noteInput" @keydown.escape="$refs.verseDialog.close()" placeholder="輸入筆記..."
             :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`"
-            class="flex-1 w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none min-h-[80px]"></textarea>
+            class="w-full px-4 py-3 rounded-lg bg-secondary border border-custom text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-amber-600 resize-none min-h-[80px]"></textarea>
         </div>
       </template>
 
       <!-- Highlight Content -->
       <template x-if="verseModal.type === 'highlight'">
-        <div class="flex-1 overflow-y-auto p-4 pb-0 scrollbar-thin">
+        <div class="drawer-content scrollbar-thin pt-4" :style="`font-size: ${fontSize}rem;`">
           <!-- Highlight List -->
           <div class="space-y-2 mb-4">
             <template x-for="(def, id) in highlightDefs" :key="id">
@@ -478,9 +619,13 @@
                 <template x-if="verseModal.editingId === id">
                   <div class="flex-1 flex items-center gap-2 p-2 rounded-lg bg-secondary">
                     <input type="color" x-model="verseModal.editColor" class="w-8 h-8 rounded cursor-pointer border-0">
-                    <input type="text" x-model="verseModal.editName" @keydown.enter="saveHighlightEdit(id)" @keydown.escape="cancelHighlightEdit()"
+                    <span contenteditable="true"
+                      x-text="verseModal.editName"
+                      @input="verseModal.editName = $el.innerText"
+                      @keydown.enter.prevent="saveHighlightEdit(id)"
+                      @keydown.escape="cancelHighlightEdit()"
                       class="flex-1 px-2 py-1 rounded bg-primary border border-custom text-primary text-sm focus:outline-none focus:ring-1 focus:ring-amber-600"
-                      style="font-size: 16px;">
+                      style="font-size: 16px; min-width: 60px;"></span>
                     <button @click="saveHighlightEdit(id)" class="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded" title="儲存">✓</button>
                     <button @click="cancelHighlightEdit()" class="p-1 text-secondary hover:bg-primary rounded" title="取消">✕</button>
                   </div>
@@ -517,56 +662,40 @@
         </div>
       </template>
 
-      <!-- Common Footer with Save/Cancel buttons -->
-      <div class="flex-shrink-0 flex justify-end gap-3 p-4 border-t" style="border-color: var(--border);">
-        <button @click="closeVerseModal()"
-          class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
-          取消
-        </button>
-        <button @click="verseModal.type === 'title' ? saveTitle() : verseModal.type === 'note' ? saveNote() : saveHighlight()"
-          class="px-4 py-2 rounded-lg text-white transition-colors"
-          style="background-color: var(--accent);">
-          儲存
-        </button>
+      <!-- Common Footer with Save/Cancel buttons (hidden for highlight type) -->
+      <div x-show="verseModal.type !== 'highlight'" class="drawer-footer">
+        <div class="flex justify-end gap-3">
+          <button @click="$refs.verseDialog.close()"
+            class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
+            取消
+          </button>
+          <button @click="verseModal.type === 'title' ? saveTitle() : saveNote()"
+            class="px-4 py-2 rounded-lg text-white transition-colors"
+            style="background-color: var(--accent);">
+            儲存
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Strong's Number Definition Drawer (Bottom Sheet) -->
-  <div x-cloak x-show="snModal.show"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-[200] bg-black/40" @click.self="snModal.show = false">
-    <!-- Drawer Panel -->
-    <div x-show="snModal.show"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
-      x-transition:leave-end="translate-y-full"
-      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl shadow-2xl flex flex-col rounded-t-2xl drawer-panel"
-      style="background-color: var(--bg-primary);">
-      <!-- Drag Handle -->
-      <div class="flex-shrink-0 flex justify-center py-2">
-        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
-      </div>
-      <!-- Header -->
-      <div class="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
-        <h3 class="font-semibold text-accent flex items-center gap-2"
-          :style="`font-size: ${fontSize}rem;`">
+  <!-- Strong's Number Definition Drawer (Bottom Sheet) - Uses reusable drawer pattern -->
+  <dialog x-ref="snDialog"
+    @close="snModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
           <span>📖</span>
           <span x-text="snModal.code"></span>
         </h3>
-        <button @click="snModal.show = false"
-          class="p-2 hover:bg-secondary rounded-full transition-colors">
-          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
         </button>
       </div>
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4"
+      <div class="drawer-content scrollbar-thin"
         :style="`font-size: ${fontSize}rem; line-height: ${lineHeight}; font-family: ${currentFontFamily};`">
         <div x-show="snModal.loading" class="flex items-center justify-center py-8">
           <span class="animate-pulse text-2xl">⏳</span>
@@ -578,6 +707,35 @@
           <span class="text-2xl block mb-2">❓</span>
           <p>找不到定義</p>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Confirm Dialog Modal -->
+  <div x-cloak x-show="confirmModal.show"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-[250] bg-black/50 flex items-center justify-center" @click.self="confirmDialogCancel()">
+    <div x-show="confirmModal.show"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+      x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+      x-transition:leave-end="opacity-0 scale-95"
+      class="rounded-2xl shadow-2xl p-6 w-[90%] max-w-sm"
+      style="background-color: var(--bg-primary);">
+      <p class="text-primary mb-6" :style="`font-size: ${fontSize}rem;`" x-text="confirmModal.message"></p>
+      <div class="flex justify-end gap-3">
+        <button @click="confirmDialogCancel()"
+          class="px-4 py-2 rounded-lg text-secondary hover:bg-secondary transition-colors">
+          取消
+        </button>
+        <button @click="confirmDialogConfirm()"
+          class="px-4 py-2 rounded-lg text-white transition-colors"
+          style="background-color: var(--accent);">
+          確定
+        </button>
       </div>
     </div>
   </div>
@@ -746,41 +904,56 @@
     </div>
   </div>
 
-  <!-- Settings Drawer (Bottom Sheet) -->
-  <div x-cloak x-show="settingsModal.show"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-[200] bg-black/40" @click.self="settingsModal.show = false">
-    <!-- Drawer Panel -->
-    <div x-show="settingsModal.show"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
-      x-transition:leave-end="translate-y-full"
-      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl shadow-2xl flex flex-col rounded-t-2xl drawer-panel"
-      style="background-color: var(--bg-primary);">
-      <!-- Drag Handle -->
-      <div class="flex-shrink-0 flex justify-center py-2">
-        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+  <!--
+    =====================================================================
+    REUSABLE DRAWER PATTERN
+    =====================================================================
+    To create a new drawer, use the following template structure:
+
+    <dialog x-ref="yourDialogRef"
+      @close="yourModal.show = false"
+      @click="if ($event.target === $el) $el.close()"
+      class="drawer-dialog">
+      <div class="drawer-panel-container">
+        <div class="drawer-handle"></div>
+        <div class="drawer-header">
+          <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
+            <span>🔧</span>
+            <span>Title</span>
+          </h3>
+          <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+            <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+        <div class="drawer-content scrollbar-thin" :style="`font-size: ${fontSize}rem;`">
+          Your content here
+        </div>
+        <div class="drawer-footer">Optional footer</div>
       </div>
-      <!-- Header -->
-      <div class="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
-        <h3 class="font-semibold text-accent flex items-center gap-2"
-          :style="`font-size: ${fontSize * 1.1}rem;`">
+    </dialog>
+
+    To open: this.$refs.yourDialogRef.showModal();
+    To close: this.$refs.yourDialogRef.close();
+    =====================================================================
+  -->
+
+  <!-- Settings Drawer (Bottom Sheet) - Uses reusable drawer pattern -->
+  <dialog x-ref="settingsDialog"
+    @close="settingsModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
           <span>⚙️</span>
           <span>設定</span>
         </h3>
-        <button @click="settingsModal.show = false"
-          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
-          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
         </button>
       </div>
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4" :style="`font-size: ${fontSize}rem;`">
+      <div class="drawer-content scrollbar-thin" :style="`font-size: ${fontSize}rem;`">
         <!-- Appearance Section -->
         <div class="space-y-3 mb-6">
           <h4 class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`">🎨 外觀</h4>
@@ -808,6 +981,18 @@
             </div>
             <div class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">
               <span x-text="currentFontFamilyName"></span>
+            </div>
+          </button>
+
+          <!-- Header Actions -->
+          <button @click="openHeaderActionsModal()"
+            class="w-full flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:border-amber-600 transition-colors">
+            <div class="flex items-center gap-3">
+              <span>🔧</span>
+              <span class="text-primary">工具列按鈕</span>
+            </div>
+            <div class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">
+              <span x-text="headerActions.filter(a => a.visible).length + '/' + headerActions.length + ' 顯示'"></span>
             </div>
           </button>
         </div>
@@ -894,28 +1079,126 @@
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Navigation Drawer (Book & Chapter Selection) -->
-  <div x-cloak x-show="navModal.show"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-[200] bg-black/40" @click.self="navModal.show = false">
-    <!-- Drawer Panel -->
-    <div x-show="navModal.show"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
-      x-transition:leave-end="translate-y-full"
-      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl drawer-panel shadow-2xl flex flex-col rounded-t-2xl"
-      style="background-color: var(--bg-primary);">
-      <!-- Drag Handle -->
-      <div class="flex justify-center py-2">
-        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
+  <!-- Reading History Drawer (Bottom Sheet) - Uses reusable drawer pattern -->
+  <dialog x-ref="historyDialog"
+    @close="historyModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
+          <span>🕐</span>
+          <span>閱讀紀錄</span>
+        </h3>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
+        </button>
       </div>
-      <!-- Header with Tabs -->
+      <div class="drawer-content scrollbar-thin" :style="`font-size: ${fontSize}rem;`">
+        <!-- Empty State -->
+        <div x-show="readingHistory.length === 0" class="flex flex-col items-center justify-center py-12 text-secondary">
+          <span class="text-4xl mb-4">📚</span>
+          <p>尚無閱讀紀錄</p>
+          <p class="text-sm mt-1 opacity-70">閱讀經文時會自動記錄</p>
+        </div>
+        <!-- History List -->
+        <div x-show="readingHistory.length > 0" class="space-y-2">
+          <template x-for="(item, index) in readingHistory" :key="'history-' + index">
+            <div class="p-3 rounded-lg border border-custom hover:border-accent-light hover:bg-secondary/50 transition-colors cursor-pointer"
+              @click="goToHistoryItem(item)">
+              <div class="font-medium text-primary truncate" x-text="getBookName(item.bookCode) + ' 第 ' + item.chapter + ' 章'"></div>
+              <div class="text-secondary text-sm" :style="`font-size: ${fontSize * 0.8}rem;`" x-text="formatHistoryTime(item.timestamp)"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div x-show="readingHistory.length > 0" class="drawer-footer">
+        <p class="text-secondary text-center" :style="`font-size: ${fontSize * 0.85}rem;`">共 <span x-text="readingHistory.length"></span> 筆紀錄（最多保留 50 筆）</p>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Header Actions Editor Modal (Bottom Sheet) - Uses reusable drawer pattern -->
+  <dialog x-ref="headerActionsDialog"
+    @close="headerActionsModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
+          <span>🔧</span>
+          <span>工具列按鈕</span>
+        </h3>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <div class="drawer-content scrollbar-thin" :style="`font-size: ${fontSize}rem;`">
+        <p class="text-secondary mb-4" :style="`font-size: ${fontSize * 0.85}rem;`">拖曳調整順序，點擊切換顯示/隱藏。隱藏的按鈕會顯示在「⋮」選單中。</p>
+        <!-- Actions List -->
+        <div class="space-y-2">
+          <template x-for="action in headerActions" :key="'edit-action-' + action.id">
+            <div
+              class="flex items-center gap-3 p-3 rounded-lg border transition-all cursor-move"
+              :class="headerActionsModal.draggedId === action.id ? 'border-accent bg-accent/10 scale-[1.02]' : (action.visible ? 'border-accent-light bg-secondary/30' : 'border-custom bg-primary')"
+              draggable="true"
+              @dragstart="startHeaderActionDrag(action.id)"
+              @dragover="handleHeaderActionDragOver($event, action.id)"
+              @dragend="endHeaderActionDrag()"
+              @touchstart="startHeaderActionDrag(action.id)"
+              @touchend="endHeaderActionDrag()">
+              <!-- Drag Handle -->
+              <div class="text-secondary cursor-grab active:cursor-grabbing">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                </svg>
+              </div>
+              <!-- Icon -->
+              <div class="w-8 h-8 rounded-full flex items-center justify-center"
+                :class="action.visible ? 'bg-accent/20 text-accent' : 'bg-secondary text-secondary'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-html="getHeaderActionIcon(action.id)"></svg>
+              </div>
+              <!-- Name -->
+              <div class="flex-1">
+                <span class="font-medium" :class="action.visible ? 'text-primary' : 'text-secondary'" x-text="action.name"></span>
+              </div>
+              <!-- Visibility Toggle -->
+              <button @click="toggleHeaderActionVisibility(action.id)"
+                class="p-2 rounded-lg transition-colors"
+                :class="action.visible ? 'text-accent hover:bg-accent/20' : 'text-secondary hover:bg-secondary'">
+                <svg x-show="action.visible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <svg x-show="!action.visible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                </svg>
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <p class="text-secondary text-center" :style="`font-size: ${fontSize * 0.85}rem;`">
+          <span x-text="headerActions.filter(a => a.visible).length"></span> 個按鈕顯示於工具列
+        </p>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Navigation Drawer (Book & Chapter Selection) - Uses reusable drawer pattern -->
+  <dialog x-ref="navDialog"
+    @close="navModal.show = false"
+    @click="if ($event.target === $el) applyNavSelection()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <!-- Custom Header with Tabs (instead of standard drawer-header) -->
       <div class="flex items-center justify-between px-4 pb-2 border-b" style="border-color: var(--border);">
         <div class="flex gap-1 flex-1">
           <button @click="navModal.tab = 'books'"
@@ -930,14 +1213,11 @@
             class="flex-1 py-2 flex items-center justify-center gap-2 font-medium transition-colors border-b-2"
             :style="`font-size: ${fontSize}rem; ` + (navModal.tab === 'chapters' ? 'border-color: var(--accent)' : 'border-color: transparent')">
             <span>📖</span>
-            <span x-text="selectedBookName"></span>
+            <span x-text="getBookName(navModal.pendingBook || selectedBook)"></span>
           </button>
         </div>
-        <button @click="navModal.show = false"
-          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0 ml-2">
-          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="applyNavSelection(); this.closest('dialog').close()" class="drawer-close-btn ml-2">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
         </button>
       </div>
 
@@ -976,11 +1256,11 @@
           <div class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
             <div class="grid grid-cols-2 gap-2">
               <template x-for="bookCode in getFilteredBooks()" :key="'nav-book-' + bookCode">
-                <button @click="selectedBook = bookCode; onBookChange(); navModal.tab = 'chapters'"
+                <button @click="navModal.pendingBook = bookCode; navModal.pendingChapter = getFirstChapterForBook(bookCode); navModal.tab = 'chapters'"
                   class="flex items-center justify-between p-3 rounded-lg bg-primary border border-custom hover:bg-secondary transition-colors text-left">
                   <span class="font-medium text-primary" :style="`font-size: ${fontSize}rem;`" x-text="getBookName(bookCode)"></span>
                   <div class="flex items-center gap-2">
-                    <span x-show="selectedBook === bookCode" class="w-2 h-2 rounded-full bg-accent"></span>
+                    <span x-show="(navModal.pendingBook || selectedBook) === bookCode" class="w-2 h-2 rounded-full bg-accent"></span>
                     <span class="text-secondary" :style="`font-size: ${fontSize * 0.85}rem;`">→</span>
                   </div>
                 </button>
@@ -993,20 +1273,24 @@
         <div x-show="navModal.tab === 'chapters'" class="flex-1 overflow-hidden flex flex-col">
           <!-- Current Selection -->
           <div class="mb-3">
-            <p class="text-accent font-medium mb-1" :style="`font-size: ${fontSize * 0.85}rem;`">📖 目前選擇</p>
+            <p class="text-accent font-medium mb-1" :style="`font-size: ${fontSize * 0.85}rem;`">📖 選擇章節</p>
             <p class="font-bold text-primary" :style="`font-size: ${fontSize * 1.15}rem;`">
-              <span x-text="selectedBookName"></span>
-              <span class="text-secondary font-normal"> / </span>
-              <span>第 <span x-text="selectedChapter"></span> 章</span>
+              <span x-text="getBookName(navModal.pendingBook || selectedBook)"></span>
+              <template x-if="navModal.pendingChapter || (!navModal.pendingBook && selectedChapter)">
+                <span>
+                  <span class="text-secondary font-normal"> / </span>
+                  <span>第 <span x-text="navModal.pendingChapter || selectedChapter"></span> 章</span>
+                </span>
+              </template>
             </p>
           </div>
 
           <!-- Chapter Grid -->
           <div x-ref="chapterGrid" class="flex-1 overflow-y-auto scrollbar-thin -mx-1.5 px-1.5">
             <div class="grid grid-cols-5 gap-2">
-              <template x-for="chapter in chapters" :key="'nav-ch-' + chapter">
-                <button @click="selectedChapter = chapter; loadVerses(); navModal.show = false; window.scrollTo({ top: 0, behavior: 'smooth' })"
-                  :class="selectedChapter === chapter ? 'bg-accent text-white' : 'bg-primary hover:bg-secondary text-primary border border-custom'"
+              <template x-for="chapter in getChaptersForPendingBook()" :key="'nav-ch-' + chapter">
+                <button @click="navModal.pendingChapter = chapter; applyNavSelection()"
+                  :class="getNavChapterClass(chapter)"
                   class="aspect-square rounded-lg flex items-center justify-center font-medium transition-all"
                   :style="`font-size: ${fontSize * 1.1}rem;`"
                   x-text="chapter"></button>
@@ -1016,42 +1300,25 @@
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Version Selector Drawer (Bottom Sheet) -->
-  <div x-cloak x-show="versionModal.show"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 z-[200] bg-black/40" @click.self="versionModal.show = false">
-    <!-- Drawer Panel -->
-    <div x-show="versionModal.show"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0"
-      x-transition:leave-end="translate-y-full"
-      class="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-2xl shadow-2xl flex flex-col rounded-t-2xl drawer-panel"
-      style="background-color: var(--bg-primary);">
-      <!-- Drag Handle -->
-      <div class="flex-shrink-0 flex justify-center py-2">
-        <div class="w-10 h-1 rounded-full" style="background-color: var(--border);"></div>
-      </div>
-      <!-- Header -->
-      <div class="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b" style="border-color: var(--border);">
-        <h3 class="font-semibold text-accent flex items-center gap-2"
-          :style="`font-size: ${fontSize * 1.1}rem;`">
+  <!-- Version Selector Drawer (Bottom Sheet) - Uses reusable drawer pattern -->
+  <dialog x-ref="versionDialog"
+    @close="versionModal.show = false"
+    @click="if ($event.target === $el) $el.close()"
+    class="drawer-dialog">
+    <div class="drawer-panel-container">
+      <div class="drawer-handle"></div>
+      <div class="drawer-header">
+        <h3 class="drawer-title" :style="`font-size: ${fontSize * 1.1}rem;`">
           <span>📚</span>
           <span>選擇譯本</span>
         </h3>
-        <button @click="versionModal.show = false"
-          class="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0">
-          <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+        <button onclick="this.closest('dialog').close()" class="drawer-close-btn">
+          <svg class="w-5 h-5 text-secondary"><use href="#icon-close"></use></svg>
         </button>
       </div>
-      <!-- Tab Switcher -->
+      <!-- Custom Tab Switcher (instead of standard drawer-header) -->
       <div class="flex border-b px-4" style="border-color: var(--border);">
         <button @click="versionModal.tab = 'select'"
           :class="versionModal.tab === 'select' ? 'border-b-2 border-amber-600 text-accent' : 'text-secondary'"
@@ -1066,144 +1333,146 @@
           對照設定
         </button>
       </div>
-      <!-- Content: Select Tab -->
-      <div x-show="versionModal.tab === 'select'" class="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        <div class="space-y-2">
-          <template x-for="version in availableVersions" :key="version.id">
-            <div class="p-3 rounded-lg border border-custom transition-colors"
-              :class="selectedVersionId === version.id ? 'bg-primary border-amber-600' : 'hover:bg-primary'">
-              <div class="flex items-center justify-between">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-medium text-primary" :style="`font-size: ${fontSize}rem;`" x-text="version.name"></span>
+      <div class="drawer-content scrollbar-thin" :style="`font-size: ${fontSize}rem;`">
+        <!-- Content: Select Tab -->
+        <div x-show="versionModal.tab === 'select'" class="p-4 pt-0">
+          <div class="space-y-2">
+            <template x-for="version in availableVersions" :key="version.id">
+              <div class="p-3 rounded-lg border border-custom transition-colors"
+                :class="selectedVersionId === version.id ? 'bg-primary border-amber-600' : 'hover:bg-primary'">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-medium text-primary" :style="`font-size: ${fontSize}rem;`" x-text="version.name"></span>
+                      <span class="px-1.5 py-0.5 rounded text-xs"
+                        :style="`font-size: ${fontSize * 0.7}rem; background-color: var(--bg-secondary); color: var(--text-secondary);`"
+                        x-text="version.lang"></span>
+                      <template x-if="selectedVersionId === version.id">
+                        <span class="px-1.5 py-0.5 rounded bg-amber-600 text-white"
+                          :style="`font-size: ${fontSize * 0.75}rem;`">使用中</span>
+                      </template>
+                      <template x-if="isVersionCached(version.id) && selectedVersionId !== version.id">
+                        <span class="px-1.5 py-0.5 rounded bg-green-600 text-white"
+                          :style="`font-size: ${fontSize * 0.75}rem;`">已下載</span>
+                      </template>
+                    </div>
+                    <p class="text-secondary mt-0.5" :style="`font-size: ${fontSize * 0.85}rem;`" x-text="version.size"></p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <!-- Delete button for cached versions (not currently selected) -->
+                    <button x-show="isVersionCached(version.id) && selectedVersionId !== version.id"
+                      @click="deleteVersion(version.id)"
+                      class="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                      title="刪除快取">
+                      <span :style="`font-size: ${fontSize * 0.85}rem;`">🗑️</span>
+                    </button>
+                    <!-- Select/Download button -->
+                    <button @click="isVersionCached(version.id) ? selectVersion(version.id) : downloadVersionOnly(version.id)"
+                      :disabled="versionModal.downloading === version.id || selectedVersionId === version.id"
+                      class="px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      :class="selectedVersionId === version.id ? 'bg-secondary text-secondary cursor-default' : 'text-white'"
+                      :style="`font-size: ${fontSize * 0.85}rem; ` + (selectedVersionId !== version.id ? 'background-color: var(--accent);' : '')">
+                      <span x-show="versionModal.downloading === version.id" class="flex items-center gap-1">
+                        <span class="animate-spin">⏳</span> 下載中...
+                      </span>
+                      <span x-show="versionModal.downloading !== version.id">
+                        <span x-text="selectedVersionId === version.id ? '使用中' : (isVersionCached(version.id) ? '切換' : '下載')"></span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <!-- Content: Compare Tab -->
+        <div x-show="versionModal.tab === 'compare'" class="p-4 pt-0">
+          <p class="text-secondary mb-3" :style="`font-size: ${fontSize * 0.85}rem;`">
+            選擇並啟用對照的譯本，並拖曳調整顯示順序
+          </p>
+          <!-- Enabled versions (reorderable) -->
+          <div x-show="compareVersionOrder.length > 0" class="mb-4">
+            <h4 class="font-medium text-accent mb-2" :style="`font-size: ${fontSize * 0.9}rem;`">已啟用 (<span x-text="compareVersionOrder.length"></span>)</h4>
+            <div class="space-y-1.5">
+              <template x-for="(versionId, idx) in compareVersionOrder" :key="'enabled-' + versionId">
+                <div class="p-2.5 rounded-lg border transition-all flex items-center gap-2"
+                  :class="versionModal.draggedVersionId === versionId ? 'border-amber-600 bg-primary opacity-50' : 'border-custom hover:border-accent-light'"
+                  draggable="true"
+                  @dragstart="versionModal.draggedVersionId = versionId"
+                  @dragend="versionModal.draggedVersionId = null"
+                  @dragover.prevent
+                  @drop.prevent="reorderCompareVersion(versionId, idx)">
+                  <!-- Drag handle -->
+                  <span class="cursor-move text-secondary select-none" style="touch-action: none;">⠿</span>
+                  <!-- Version info -->
+                  <div class="flex-1 flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`"
+                      x-text="availableVersions.find(v => v.id === versionId)?.name || versionId"></span>
+                    <span class="px-1.5 py-0.5 rounded text-xs"
+                      :style="`font-size: ${fontSize * 0.7}rem; background-color: var(--bg-secondary); color: var(--text-secondary);`"
+                      x-text="availableVersions.find(v => v.id === versionId)?.lang"></span>
+                  </div>
+                  <!-- Move buttons for touch devices -->
+                  <button @click="moveCompareVersion(idx, -1)" :disabled="idx === 0"
+                    class="p-1 rounded hover:bg-secondary disabled:opacity-30 text-secondary transition-colors" title="上移">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                  </button>
+                  <button @click="moveCompareVersion(idx, 1)" :disabled="idx === compareVersionOrder.length - 1"
+                    class="p-1 rounded hover:bg-secondary disabled:opacity-30 text-secondary transition-colors" title="下移">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                  <!-- Toggle off -->
+                  <button @click="toggleCompareVersion(versionId)"
+                    class="p-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30" title="移除">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+          <!-- Available cached versions to add -->
+          <div x-show="getAvailableCompareVersions().length > 0">
+            <h4 class="font-medium text-secondary mb-2" :style="`font-size: ${fontSize * 0.9}rem;`">可加入對照</h4>
+            <div class="space-y-1.5">
+              <template x-for="version in getAvailableCompareVersions()" :key="'available-' + version.id">
+                <div class="p-2.5 rounded-lg border border-custom hover:border-accent-light transition-colors flex items-center gap-2">
+                  <div class="flex-1 flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`" x-text="version.name"></span>
                     <span class="px-1.5 py-0.5 rounded text-xs"
                       :style="`font-size: ${fontSize * 0.7}rem; background-color: var(--bg-secondary); color: var(--text-secondary);`"
                       x-text="version.lang"></span>
-                    <template x-if="selectedVersionId === version.id">
-                      <span class="px-1.5 py-0.5 rounded bg-amber-600 text-white"
-                        :style="`font-size: ${fontSize * 0.75}rem;`">使用中</span>
-                    </template>
-                    <template x-if="isVersionCached(version.id) && selectedVersionId !== version.id">
-                      <span class="px-1.5 py-0.5 rounded bg-green-600 text-white"
-                        :style="`font-size: ${fontSize * 0.75}rem;`">已下載</span>
-                    </template>
                   </div>
-                  <p class="text-secondary mt-0.5" :style="`font-size: ${fontSize * 0.85}rem;`" x-text="version.size"></p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <!-- Delete button for cached versions (not currently selected) -->
-                  <button x-show="isVersionCached(version.id) && selectedVersionId !== version.id"
-                    @click="deleteVersion(version.id)"
-                    class="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                    title="刪除快取">
-                    <span :style="`font-size: ${fontSize * 0.85}rem;`">🗑️</span>
-                  </button>
-                  <!-- Select/Download button -->
-                  <button @click="selectVersion(version.id)"
-                    :disabled="versionModal.downloading === version.id"
-                    class="px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                    :class="selectedVersionId === version.id ? 'bg-secondary text-secondary cursor-default' : 'text-white'"
-                    :style="`font-size: ${fontSize * 0.85}rem; ` + (selectedVersionId !== version.id ? 'background-color: var(--accent);' : '')">
-                    <span x-show="versionModal.downloading === version.id" class="flex items-center gap-1">
-                      <span class="animate-spin">⏳</span> 下載中...
-                    </span>
-                    <span x-show="versionModal.downloading !== version.id">
-                      <span x-text="selectedVersionId === version.id ? '使用中' : (isVersionCached(version.id) ? '切換' : '下載')"></span>
-                    </span>
+                  <button @click="toggleCompareVersion(version.id)"
+                    class="p-1.5 rounded-lg transition-colors text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30" title="加入對照">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
                   </button>
                 </div>
-              </div>
+              </template>
             </div>
-          </template>
-        </div>
-      </div>
-      <!-- Content: Compare Tab -->
-      <div x-show="versionModal.tab === 'compare'" class="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        <p class="text-secondary mb-3" :style="`font-size: ${fontSize * 0.85}rem;`">
-          選擇要啟用對照的譯本，並拖曳調整顯示順序
-        </p>
-        <!-- Enabled versions (reorderable) -->
-        <div x-show="compareVersionOrder.length > 0" class="mb-4">
-          <h4 class="font-medium text-accent mb-2" :style="`font-size: ${fontSize * 0.9}rem;`">已啟用 (<span x-text="compareVersionOrder.length"></span>)</h4>
-          <div class="space-y-1.5">
-            <template x-for="(versionId, idx) in compareVersionOrder" :key="'enabled-' + versionId">
-              <div class="p-2.5 rounded-lg border transition-all flex items-center gap-2"
-                :class="versionModal.draggedVersionId === versionId ? 'border-amber-600 bg-primary opacity-50' : 'border-custom hover:border-accent-light'"
-                draggable="true"
-                @dragstart="versionModal.draggedVersionId = versionId"
-                @dragend="versionModal.draggedVersionId = null"
-                @dragover.prevent
-                @drop.prevent="reorderCompareVersion(versionId, idx)">
-                <!-- Drag handle -->
-                <span class="cursor-move text-secondary select-none" style="touch-action: none;">⠿</span>
-                <!-- Version info -->
-                <div class="flex-1 flex items-center gap-2 flex-wrap">
-                  <span class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`"
-                    x-text="availableVersions.find(v => v.id === versionId)?.name || versionId"></span>
-                  <span class="px-1.5 py-0.5 rounded text-xs"
-                    :style="`font-size: ${fontSize * 0.7}rem; background-color: var(--bg-secondary); color: var(--text-secondary);`"
-                    x-text="availableVersions.find(v => v.id === versionId)?.lang"></span>
-                </div>
-                <!-- Move buttons for touch devices -->
-                <button @click="moveCompareVersion(idx, -1)" :disabled="idx === 0"
-                  class="p-1 rounded hover:bg-secondary disabled:opacity-30 text-secondary transition-colors" title="上移">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                  </svg>
-                </button>
-                <button @click="moveCompareVersion(idx, 1)" :disabled="idx === compareVersionOrder.length - 1"
-                  class="p-1 rounded hover:bg-secondary disabled:opacity-30 text-secondary transition-colors" title="下移">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                  </svg>
-                </button>
-                <!-- Toggle off -->
-                <button @click="toggleCompareVersion(versionId)"
-                  class="p-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30" title="移除">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-            </template>
           </div>
-        </div>
-        <!-- Available cached versions to add -->
-        <div x-show="getAvailableCompareVersions().length > 0">
-          <h4 class="font-medium text-secondary mb-2" :style="`font-size: ${fontSize * 0.9}rem;`">可加入對照</h4>
-          <div class="space-y-1.5">
-            <template x-for="version in getAvailableCompareVersions()" :key="'available-' + version.id">
-              <div class="p-2.5 rounded-lg border border-custom hover:border-accent-light transition-colors flex items-center gap-2">
-                <div class="flex-1 flex items-center gap-2 flex-wrap">
-                  <span class="font-medium text-primary" :style="`font-size: ${fontSize * 0.95}rem;`" x-text="version.name"></span>
-                  <span class="px-1.5 py-0.5 rounded text-xs"
-                    :style="`font-size: ${fontSize * 0.7}rem; background-color: var(--bg-secondary); color: var(--text-secondary);`"
-                    x-text="version.lang"></span>
-                </div>
-                <button @click="toggleCompareVersion(version.id)"
-                  class="p-1.5 rounded-lg transition-colors text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30" title="加入對照">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                  </svg>
-                </button>
-              </div>
-            </template>
+          <!-- No cached versions message -->
+          <div x-show="cachedVersions.length <= 1" class="text-center py-8">
+            <span class="text-4xl mb-3 block">📥</span>
+            <p class="text-secondary" :style="`font-size: ${fontSize * 0.9}rem;`">
+              請先在「譯本選擇」頁籤下載其他譯本
+            </p>
           </div>
-        </div>
-        <!-- No cached versions message -->
-        <div x-show="cachedVersions.length <= 1" class="text-center py-8">
-          <span class="text-4xl mb-3 block">📥</span>
-          <p class="text-secondary" :style="`font-size: ${fontSize * 0.9}rem;`">
-            請先在「譯本選擇」頁籤下載其他譯本
-          </p>
         </div>
       </div>
       <!-- Footer -->
-      <div class="px-4 py-3 border-t" style="border-color: var(--border);">
+      <div class="drawer-footer">
         <p class="text-secondary text-center" :style="`font-size: ${fontSize * 0.85}rem;`">已快取 <span x-text="cachedVersions.length"></span> 個譯本</p>
       </div>
     </div>
-  </div>
+  </dialog>
 
 
     <div id="pwa-toast" role="alert" aria-labelledby="toast-message"
@@ -1253,7 +1522,7 @@
       'EZR': '以斯拉記', 'NEH': '尼希米記', 'EST': '以斯帖記', 'JOB': '約伯記', 'PSM': '詩篇',
       'PRO': '箴言', 'ECC': '傳道書', 'SON': '雅歌', 'ISA': '以賽亞書', 'JER': '耶利米書',
       'LAM': '耶利米哀歌', 'EZE': '以西結書', 'DAN': '但以理書', 'HOS': '何西阿書',
-      'JOE': '約珥書', 'AMO': '阿摩司書', 'OBA': '俄巴底亞書', 'JON': '約拿書', 'MIC': '彌迦書',
+      'JOE': '約珥書', 'AMO': '阿摩司書', 'OBA': '���巴底亞書', 'JON': '約拿書', 'MIC': '彌迦書',
       'NAH': '那鴻書', 'HAB': '哈巴谷書', 'ZEP': '西番雅書', 'HAG': '哈該書', 'ZEC': '撒迦利亞書', 'MAL': '瑪拉基書',
       // New Testament
       'MAT': '馬太福音', 'MAK': '馬可福音', 'LUK': '路加福音', 'JHN': '約翰福音', 'ACT': '使徒行傳',
@@ -1318,7 +1587,7 @@
       { id: 'en_BBE', file: 'en_BBE.txt', name: 'Bible in Basic English', lang: 'English', size: '4.4 MB' },
       { id: 'en_YLT', file: 'en_YLT.txt', name: 'Young\'s Literal', lang: 'English', size: '4.4 MB' },
       { id: 'el_Septuaginta', file: 'el_Septuaginta.txt', name: 'Septuaginta', lang: 'Ελληνικά', size: '5.4 MB' },
-      { id: 'iw_ModernHebrew', file: 'iw_ModernHebrew.txt', name: 'Modern Hebrew', lang: 'עברית', size: '4.0 MB' }
+      { id: 'iw_ModernHebrew', file: 'iw_ModernHebrew.txt', name: 'Modern Hebrew', lang: 'ע��רית', size: '4.0 MB' }
     ];
 
     function bibleReader() {
@@ -1363,7 +1632,9 @@
           show: false,
           tab: 'chapters',  // 'books' or 'chapters'
           testament: 'old', // 'old' or 'new'
-          category: 'pentateuch'  // category filter
+          category: 'pentateuch',  // category filter
+          pendingBook: null,    // temporarily selected book
+          pendingChapter: null  // temporarily selected chapter
         },
         verseActions: {
           show: false,
@@ -1396,11 +1667,32 @@
           definition: '',
           loading: false
         },
+        confirmModal: {
+          show: false,
+          message: '',
+          onConfirm: null
+        },
+        historyModal: {
+          show: false
+        },
+        readingHistory: [],  // Array of { bookCode, chapter, timestamp }
+        _skipHistoryRecording: true,  // Skip history during initial load
         snDictTexts: {},  // Cache for raw dictionary text by version ID
         snDictLoading: false,
         hasFileSystemAccess: false,
         fileHandle: null,
         autoSync: false,
+        // Header actions configuration
+        headerActions: [
+          { id: 'search', name: '搜尋', icon: 'search', visible: true },
+          { id: 'history', name: '閱讀紀錄', icon: 'clock', visible: true },
+          { id: 'settings', name: '設定', icon: 'settings', visible: true }
+        ],
+        headerActionsModal: {
+          show: false,
+          draggedId: null
+        },
+        headerOverflowOpen: false,
         // Reading preferences
         fontSize: 1.125,   // in rem (default ~18px at 16px base)
         lineHeight: 1.8,   // multiplier
@@ -1478,21 +1770,21 @@
         async loadFromStorage() {
           try {
             const [savedTitles, savedNotes, savedBook, savedChapter, savedAutoSync, savedFileHandle, savedVersionId, savedCachedVersions, savedFontSize, savedLineHeight, savedVerseSpacing, savedFontFamily, savedHighlightDefs, savedVerseHighlights, savedZoom] = await Promise.all([
-              idbKeyval.get('bible_customTitles'),
-              idbKeyval.get('bible_notes'),
-              idbKeyval.get('bible_selectedBook'),
-              idbKeyval.get('bible_selectedChapter'),
-              idbKeyval.get('bible_autoSync'),
-              idbKeyval.get('bible_fileHandle'),
-              idbKeyval.get('bible_selectedVersion'),
-              idbKeyval.get('bible_cachedVersions'),
-              idbKeyval.get('bible_fontSize'),
-              idbKeyval.get('bible_lineHeight'),
-              idbKeyval.get('bible_verseSpacing'),
-              idbKeyval.get('bible_fontFamily'),
-              idbKeyval.get('bible_highlightDefs'),
-              idbKeyval.get('bible_verseHighlights'),
-              idbKeyval.get('bible_zoom')
+              this._storageLoad('bible_customTitles'),
+              this._storageLoad('bible_notes'),
+              this._storageLoad('bible_selectedBook'),
+              this._storageLoad('bible_selectedChapter'),
+              this._storageLoad('bible_autoSync'),
+              this._storageLoad('bible_fileHandle'),
+              this._storageLoad('bible_selectedVersion'),
+              this._storageLoad('bible_cachedVersions'),
+              this._storageLoad('bible_fontSize'),
+              this._storageLoad('bible_lineHeight'),
+              this._storageLoad('bible_verseSpacing'),
+              this._storageLoad('bible_fontFamily'),
+              this._storageLoad('bible_highlightDefs'),
+              this._storageLoad('bible_verseHighlights'),
+              this._storageLoad('bible_zoom')
             ]);
 
             if (savedTitles) {
@@ -1557,21 +1849,44 @@
 
             // Load compare version order
             await this.loadCompareVersionOrder();
+
+            // Load reading history (stored separately, not in user data zip)
+            await this.loadReadingHistory();
+
+            // Load header actions configuration
+            await this.loadHeaderActions();
           } catch (e) {
             console.warn('Failed to load from IndexedDB:', e);
           }
         },
 
+        // Generic IndexedDB helpers
+        async _storageSave(key, value) {
+          try {
+            await idbKeyval.set(key, value);
+          } catch (e) {
+            console.warn(`Failed to save ${key}:`, e);
+          }
+        },
+        async _storageLoad(key) {
+          try {
+            return await idbKeyval.get(key);
+          } catch (e) {
+            console.warn(`Failed to load ${key}:`, e);
+            return undefined;
+          }
+        },
+
         // Save file handle to IndexedDB
         async saveFileHandle() {
-          try {
-            if (this.fileHandle) {
-              await idbKeyval.set('bible_fileHandle', this.fileHandle);
-            } else {
+          if (this.fileHandle) {
+            await this._storageSave('bible_fileHandle', this.fileHandle);
+          } else {
+            try {
               await idbKeyval.del('bible_fileHandle');
+            } catch (e) {
+              console.warn('Failed to delete file handle:', e);
             }
-          } catch (e) {
-            console.warn('Failed to save file handle:', e);
           }
         },
 
@@ -1595,54 +1910,38 @@
         },
 
         async saveCustomTitles() {
-          try {
-            // Clone to plain object to avoid DataCloneError with Alpine proxies
-            await idbKeyval.set('bible_customTitles', JSON.parse(JSON.stringify(this.customTitles)));
-            await this.triggerAutoSync();
-          } catch (e) {
-            console.warn('Failed to save custom titles:', e);
-          }
+          const value = JSON.parse(JSON.stringify(this.customTitles));
+          await this._storageSave('bible_customTitles', value);
+          await this.triggerAutoSync();
         },
 
         async saveNotes() {
-          try {
-            // Clone to plain object to avoid DataCloneError with Alpine proxies
-            await idbKeyval.set('bible_notes', JSON.parse(JSON.stringify(this.notes)));
-            await this.triggerAutoSync();
-          } catch (e) {
-            console.warn('Failed to save notes:', e);
-          }
+          const value = JSON.parse(JSON.stringify(this.notes));
+          await this._storageSave('bible_notes', value);
+          await this.triggerAutoSync();
         },
 
         async saveReadingPosition() {
-          try {
-            await Promise.all([
-              idbKeyval.set('bible_selectedBook', this.selectedBook),
-              idbKeyval.set('bible_selectedChapter', this.selectedChapter)
-            ]);
-          } catch (e) {
-            console.warn('Failed to save reading position:', e);
-          }
+          await Promise.all([
+            this._storageSave('bible_selectedBook', this.selectedBook),
+            this._storageSave('bible_selectedChapter', this.selectedChapter)
+          ]);
         },
 
         async saveReadingPreferences() {
-          try {
-            await Promise.all([
-              idbKeyval.set('bible_fontSize', this.fontSize),
-              idbKeyval.set('bible_lineHeight', this.lineHeight),
-              idbKeyval.set('bible_verseSpacing', this.verseSpacing),
-              idbKeyval.set('bible_fontFamily', this.fontFamily),
-              idbKeyval.set('bible_zoom', this.zoom)
-            ]);
-          } catch (e) {
-            console.warn('Failed to save reading preferences:', e);
-          }
+          await Promise.all([
+            this._storageSave('bible_fontSize', this.fontSize),
+            this._storageSave('bible_lineHeight', this.lineHeight),
+            this._storageSave('bible_verseSpacing', this.verseSpacing),
+            this._storageSave('bible_fontFamily', this.fontFamily),
+            this._storageSave('bible_zoom', this.zoom)
+          ]);
         },
 
         // Show reading overlay control
         showReadingOverlay() {
           this.readingOverlay.show = true;
-          this.settingsModal.show = false;
+          this.$refs.settingsDialog?.close();
         },
 
         hideReadingOverlay() {
@@ -1941,15 +2240,6 @@
           return this.availableVersions.find(v => v.id === this.selectedVersionId) || this.availableVersions[0];
         },
 
-        // Check if any drawer/modal is open (to prevent background scroll)
-        get isAnyDrawerOpen() {
-          return this.settingsModal.show ||
-                 this.versionModal.show ||
-                 this.navModal.show ||
-                 this.verseModal.show ||
-                 this.snModal.show;
-        },
-
         // Check if a version is cached
         isVersionCached(versionId) {
           return this.cachedVersions.includes(versionId);
@@ -1957,20 +2247,18 @@
 
         // Save selected version preference
         async saveSelectedVersion() {
-          try {
-            await idbKeyval.set('bible_selectedVersion', this.selectedVersionId);
-          } catch (e) {
-            console.warn('Failed to save selected version:', e);
-          }
+          await this._storageSave('bible_selectedVersion', this.selectedVersionId);
+        },
+
+        async saveCachedVersions() {
+          const value = JSON.parse(JSON.stringify(this.cachedVersions));
+          await this._storageSave('bible_cachedVersions', value);
         },
 
         // Save cached versions list
         async saveCachedVersions() {
-          try {
-            await idbKeyval.set('bible_cachedVersions', JSON.parse(JSON.stringify(this.cachedVersions)));
-          } catch (e) {
-            console.warn('Failed to save cached versions list:', e);
-          }
+          const value = JSON.parse(JSON.stringify(this.cachedVersions));
+          await this._storageSave('bible_cachedVersions', value);
         },
 
         // Download and cache a Bible version
@@ -2019,7 +2307,17 @@
           }
         },
 
-        // Select and load a version
+        // Download a version without switching to it
+        async downloadVersionOnly(versionId) {
+          const version = this.availableVersions.find(v => v.id === versionId);
+          if (!version) return;
+
+          if (!this.isVersionCached(versionId)) {
+            await this.downloadVersion(version);
+          }
+        },
+
+        // Select and load a version (without closing drawer)
         async selectVersion(versionId) {
           const version = this.availableVersions.find(v => v.id === versionId);
           if (!version) return;
@@ -2032,7 +2330,6 @@
 
           this.selectedVersionId = versionId;
           await this.saveSelectedVersion();
-          this.versionModal.show = false;
 
           // Reload verses
           await this.parseVerses();
@@ -2210,6 +2507,9 @@
               if (needsReload) {
                 this.loadVerses();
               }
+
+              // Enable history recording after initial load is complete
+              this._skipHistoryRecording = false;
             });
           }
         },
@@ -2224,6 +2524,68 @@
           }
         },
 
+        // Get chapters for the pending book in the nav modal
+        getChaptersForPendingBook() {
+          const book = this.navModal.pendingBook || this.selectedBook;
+          if (this.bibleData[book]) {
+            return Object.keys(this.bibleData[book])
+              .map(Number)
+              .sort((a, b) => a - b);
+          }
+          return this.chapters;
+        },
+
+        // Get the first chapter number for a given book
+        getFirstChapterForBook(bookCode) {
+          if (this.bibleData[bookCode]) {
+            const chapters = Object.keys(this.bibleData[bookCode])
+              .map(Number)
+              .sort((a, b) => a - b);
+            return chapters[0] || 1;
+          }
+          return 1;
+        },
+
+        // Get CSS class for chapter button in nav modal
+        getNavChapterClass(chapter) {
+          const isSelected = this.navModal.pendingChapter === chapter ||
+            // Only highlight current chapter if we're on the same book and no pending selection
+            (!this.navModal.pendingChapter && !this.navModal.pendingBook && this.selectedChapter === chapter);
+          return isSelected
+            ? 'bg-accent text-white'
+            : 'bg-primary hover:bg-secondary text-primary border border-custom';
+        },
+
+        // Apply pending selection from nav modal and close
+        applyNavSelection() {
+          const newBook = this.navModal.pendingBook || this.selectedBook;
+          const newChapter = this.navModal.pendingChapter || this.selectedChapter;
+
+          // Check if selection changed
+          const bookChanged = newBook !== this.selectedBook;
+          const chapterChanged = newChapter !== this.selectedChapter;
+
+          if (bookChanged) {
+            this.selectedBook = newBook;
+            this.updateChapters();
+          }
+
+          if (bookChanged || chapterChanged) {
+            // Validate chapter exists for the book
+            if (this.chapters.includes(newChapter)) {
+              this.selectedChapter = newChapter;
+            } else {
+              this.selectedChapter = this.chapters[0] || 1;
+            }
+            this.loadVerses();
+          }
+
+          // Reset pending values and close
+          this.navModal.pendingBook = null;
+          this.navModal.pendingChapter = null;
+          this.$refs.navDialog?.close();
+        },
+
         onBookChange() {
           this.updateChapters();
           this.selectedChapter = this.chapters[0] || 1;
@@ -2234,6 +2596,8 @@
         loadVerses() {
           if (this.bibleData[this.selectedBook] && this.bibleData[this.selectedBook][this.selectedChapter]) {
             this.currentVerses = this.bibleData[this.selectedBook][this.selectedChapter];
+            // Record reading history
+            this.addToReadingHistory(this.selectedBook, this.selectedChapter);
           } else {
             this.currentVerses = [];
           }
@@ -2332,6 +2696,102 @@
           document.documentElement.classList.toggle('dark', this.isDark);
         },
 
+        // Header action helpers
+        getHeaderActionIcon(actionId) {
+          const icons = {
+            search: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>',
+            history: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+            settings: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'
+          };
+          return icons[actionId] || '';
+        },
+
+        triggerHeaderAction(actionId) {
+          switch (actionId) {
+            case 'search':
+              this.headerSearchOpen = !this.headerSearchOpen;
+              if (!this.headerSearchOpen) {
+                this.searchQuery = '';
+                this.searchResults = [];
+              } else {
+                this.$nextTick(() => this.$refs.headerSearchInput?.focus());
+              }
+              break;
+            case 'history':
+              this.historyModal.show = true;
+              this.$refs.historyDialog.showModal();
+              break;
+            case 'settings':
+              this.settingsModal.show = true;
+              this.$refs.settingsDialog.showModal();
+              break;
+          }
+        },
+
+        // Header actions modal methods
+        openHeaderActionsModal() {
+          this.headerActionsModal.show = true;
+          this.$refs.settingsDialog?.close();
+          this.$refs.headerActionsDialog.showModal();
+        },
+
+        toggleHeaderActionVisibility(actionId) {
+          const action = this.headerActions.find(a => a.id === actionId);
+          if (action) {
+            action.visible = !action.visible;
+            this.saveHeaderActions();
+          }
+        },
+
+        // Drag and drop for header actions reordering
+        startHeaderActionDrag(actionId) {
+          this.headerActionsModal.draggedId = actionId;
+        },
+
+        handleHeaderActionDragOver(event, targetId) {
+          event.preventDefault();
+          if (!this.headerActionsModal.draggedId || this.headerActionsModal.draggedId === targetId) return;
+
+          const draggedIdx = this.headerActions.findIndex(a => a.id === this.headerActionsModal.draggedId);
+          const targetIdx = this.headerActions.findIndex(a => a.id === targetId);
+
+          if (draggedIdx !== -1 && targetIdx !== -1) {
+            const [dragged] = this.headerActions.splice(draggedIdx, 1);
+            this.headerActions.splice(targetIdx, 0, dragged);
+          }
+        },
+
+        endHeaderActionDrag() {
+          if (this.headerActionsModal.draggedId) {
+            this.headerActionsModal.draggedId = null;
+            this.saveHeaderActions();
+          }
+        },
+
+        async saveHeaderActions() {
+          const value = JSON.parse(JSON.stringify(this.headerActions));
+          await this._storageSave('bible_headerActions', value);
+        },
+
+        async loadHeaderActions() {
+          const saved = await this._storageLoad('bible_headerActions');
+          if (saved && Array.isArray(saved)) {
+            const defaultActions = [
+              { id: 'search', name: '搜尋', icon: 'search', visible: true },
+              { id: 'history', name: '閱讀紀錄', icon: 'clock', visible: true },
+              { id: 'settings', name: '設定', icon: 'settings', visible: true }
+            ];
+            const savedIds = saved.map(a => a.id);
+            const merged = saved.filter(a => defaultActions.some(d => d.id === a.id));
+            defaultActions.forEach(d => {
+              if (!savedIds.includes(d.id)) {
+                merged.push(d);
+              }
+            });
+            this.headerActions = merged;
+          }
+        },
+
         // Verse actions widget
         showVerseActions(verse) {
           // If clicking the same verse that's already selected, hide the widget
@@ -2373,6 +2833,7 @@
               this.$refs.titleInput.focus();
             }
           });
+          this.$refs.verseDialog.showModal();
         },
 
         openNoteModal(verse) {
@@ -2393,6 +2854,7 @@
               this.$refs.noteInput.focus();
             }
           });
+          this.$refs.verseDialog.showModal();
         },
 
         openHighlightModal(verse) {
@@ -2409,28 +2871,13 @@
             editName: '',
             editColor: ''
           };
+          this.$refs.verseDialog.showModal();
         },
 
         closeVerseModal() {
-          // Re-select the verse to keep the widget open after drawer closes
-          const verse = this.verseModal.verse;
-          if (verse) {
-            // Delay re-selection to run after click.away handlers
-            this.$nextTick(() => {
-              this.verseActions = {
-                show: true,
-                verse: verse
-              };
-            });
+          if (this.$refs.verseDialog) {
+            this.$refs.verseDialog.close();
           }
-          this.verseModal.show = false;
-          this.verseModal.type = null;
-          this.verseModal.title = '';
-          this.verseModal.note = '';
-          this.verseModal.selectedHighlightId = null;
-          this.verseModal.editingId = null;
-          this.verseModal.editName = '';
-          this.verseModal.editColor = '';
         },
 
         saveTitle() {
@@ -2545,23 +2992,14 @@
 
         // Save compare order to storage
         async saveCompareVersionOrder() {
-          try {
-            await idbKeyval.set('bible_compare_order', this.compareVersionOrder);
-          } catch (e) {
-            console.warn('Failed to save compare order:', e);
-          }
+          await this._storageSave('bible_compare_order', this.compareVersionOrder);
         },
 
         // Load compare order from storage
         async loadCompareVersionOrder() {
-          try {
-            const saved = await idbKeyval.get('bible_compare_order');
-            if (Array.isArray(saved)) {
-              // Filter out any versions that are no longer cached
-              this.compareVersionOrder = saved.filter(id => this.cachedVersions.includes(id));
-            }
-          } catch (e) {
-            console.warn('Failed to load compare order:', e);
+          const saved = await this._storageLoad('bible_compare_order');
+          if (Array.isArray(saved)) {
+            this.compareVersionOrder = saved.filter(id => this.cachedVersions.includes(id));
           }
         },
 
@@ -2581,6 +3019,16 @@
           } else {
             this.verseModal.selectedHighlightId = highlightId;
           }
+          // Immediately save (but don't close the modal)
+          const ref = this.verseModal.verse?.ref;
+          if (!ref) return;
+          const selectedId = this.verseModal.selectedHighlightId;
+          if (selectedId) {
+            this.verseHighlights[ref] = selectedId;
+          } else {
+            delete this.verseHighlights[ref];
+          }
+          this.saveHighlights();
         },
 
         saveHighlight() {
@@ -2641,37 +3089,62 @@
         },
 
         deleteHighlight(id) {
-          // Remove from defs
-          delete this.highlightDefs[id];
-          // Remove from all verses using this highlight
-          for (const ref in this.verseHighlights) {
-            if (this.verseHighlights[ref] === id) {
-              delete this.verseHighlights[ref];
+          // Count how many verses use this highlight
+          const affectedCount = Object.values(this.verseHighlights).filter(hId => hId === id).length;
+          const highlightName = this.highlightDefs[id]?.name || '';
+
+          // Show confirmation with count
+          this.showConfirmDialog(
+            affectedCount > 0
+              ? `確定要刪除「${highlightName}」嗎？這將移除 ${affectedCount} 個經文的標註。`
+              : `確定要刪除「${highlightName}」嗎？`,
+            () => {
+              // Remove from defs
+              delete this.highlightDefs[id];
+              // Remove from all verses using this highlight
+              for (const ref in this.verseHighlights) {
+                if (this.verseHighlights[ref] === id) {
+                  delete this.verseHighlights[ref];
+                }
+              }
+              this.saveHighlightDefs();
+              this.saveHighlights();
             }
+          );
+        },
+
+        showConfirmDialog(message, onConfirm) {
+          this.confirmModal.message = message;
+          this.confirmModal.onConfirm = onConfirm;
+          this.confirmModal.show = true;
+        },
+
+        confirmDialogConfirm() {
+          if (this.confirmModal.onConfirm) {
+            this.confirmModal.onConfirm();
           }
-          this.saveHighlightDefs();
-          this.saveHighlights();
+          this.confirmModal.show = false;
+          this.confirmModal.onConfirm = null;
+        },
+
+        confirmDialogCancel() {
+          this.confirmModal.show = false;
+          this.confirmModal.onConfirm = null;
         },
 
         async saveHighlights() {
-          try {
-            await idbKeyval.set('bible_verseHighlights', JSON.parse(JSON.stringify(this.verseHighlights)));
-            if (this.autoSync && this.fileHandle) {
-              await this.syncToFile();
-            }
-          } catch (e) {
-            console.warn('Failed to save highlights:', e);
+          const value = JSON.parse(JSON.stringify(this.verseHighlights));
+          await this._storageSave('bible_verseHighlights', value);
+          if (this.autoSync && this.fileHandle) {
+            await this.syncToFile();
           }
         },
 
         async saveHighlightDefs() {
-          try {
-            await idbKeyval.set('bible_highlightDefs', JSON.parse(JSON.stringify(this.highlightDefs)));
-            if (this.autoSync && this.fileHandle) {
-              await this.syncToFile();
-            }
-          } catch (e) {
-            console.warn('Failed to save highlight definitions:', e);
+          const value = JSON.parse(JSON.stringify(this.highlightDefs));
+          await this._storageSave('bible_highlightDefs', value);
+          if (this.autoSync && this.fileHandle) {
+            await this.syncToFile();
           }
         },
 
@@ -2707,11 +3180,7 @@
 
         // Settings & File System Access API methods
         async saveAutoSyncPreference() {
-          try {
-            await idbKeyval.set('bible_autoSync', this.autoSync);
-          } catch (e) {
-            console.warn('Failed to save auto-sync preference:', e);
-          }
+          await this._storageSave('bible_autoSync', this.autoSync);
         },
 
         getExportData() {
@@ -3155,6 +3624,7 @@
           this.snModal.code = code;
           this.snModal.definition = '';
           this.snModal.loading = true;
+          this.$refs.snDialog.showModal();
 
           // Determine dictionary based on selected version's language
           // Chinese versions start with 'zh', use Chinese SN dictionary
@@ -3299,6 +3769,110 @@
               // Removing it would cause the verse-item opacity:0 to kick in again
             }
           }, 100);
+        },
+
+        // === Reading History Methods ===
+        // Load reading history from IndexedDB
+        async loadReadingHistory() {
+          const savedHistory = await this._storageLoad('bible_readingHistory');
+          if (savedHistory && Array.isArray(savedHistory)) {
+            this.readingHistory = savedHistory;
+          }
+        },
+
+        async saveReadingHistory() {
+          const value = JSON.parse(JSON.stringify(this.readingHistory));
+          await this._storageSave('bible_readingHistory', value);
+        },
+
+        // Save reading history to IndexedDB
+        async saveReadingHistory() {
+          const value = JSON.parse(JSON.stringify(this.readingHistory));
+          await this._storageSave('bible_readingHistory', value);
+        },
+
+        // Add a new entry to reading history
+        addToReadingHistory(bookCode, chapter) {
+          if (!bookCode || !chapter) return;
+
+          // Skip recording during initial load
+          if (this._skipHistoryRecording) return;
+
+          // Check if this book+chapter is already the most recent entry
+          if (this.readingHistory.length > 0) {
+            const mostRecent = this.readingHistory[0];
+            if (mostRecent.bookCode === bookCode && mostRecent.chapter === chapter) {
+              // Update timestamp of existing most recent entry
+              mostRecent.timestamp = Date.now();
+              this.saveReadingHistory();
+              return;
+            }
+          }
+
+          // Remove any existing entry for the same book+chapter
+          this.readingHistory = this.readingHistory.filter(
+            item => !(item.bookCode === bookCode && item.chapter === chapter)
+          );
+
+          // Add new entry at the beginning
+          this.readingHistory.unshift({
+            bookCode,
+            chapter,
+            timestamp: Date.now()
+          });
+
+          // Limit to 50 entries
+          if (this.readingHistory.length > 50) {
+            this.readingHistory = this.readingHistory.slice(0, 50);
+          }
+
+          this.saveReadingHistory();
+        },
+
+        // Navigate to a history item
+        goToHistoryItem(item) {
+          this.selectedBook = item.bookCode;
+          this.updateChapters();
+          if (this.chapters.includes(item.chapter)) {
+            this.selectedChapter = item.chapter;
+          } else {
+            this.selectedChapter = this.chapters[0] || 1;
+          }
+          this.loadVerses();
+          this.$refs.historyDialog?.close();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        // Remove a single history item
+        removeHistoryItem(index) {
+          this.readingHistory.splice(index, 1);
+          this.saveReadingHistory();
+        },
+
+        // Clear all reading history
+        clearReadingHistory() {
+          this.readingHistory = [];
+          this.saveReadingHistory();
+        },
+
+        // Format timestamp for display
+        formatHistoryTime(timestamp) {
+          if (!timestamp) return '';
+
+          const now = Date.now();
+          const diff = now - timestamp;
+          const minutes = Math.floor(diff / 60000);
+          const hours = Math.floor(diff / 3600000);
+          const days = Math.floor(diff / 86400000);
+
+          if (minutes < 1) return '剛才';
+          if (minutes < 60) return `${minutes} 分鐘前`;
+          if (hours < 24) return `${hours} 小時前`;
+          if (days < 7) return `${days} 天前`;
+
+          // For older entries, show date
+          const date = new Date(timestamp);
+          return `${date.getMonth() + 1}/${date.getDate()}`;
         }
       };
     }
